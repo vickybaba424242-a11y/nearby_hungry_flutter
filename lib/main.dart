@@ -9,7 +9,7 @@ import 'screens/login_page.dart';
 import 'screens/home_page.dart';
 import 'screens/register_page.dart';
 import 'screens/forgot_password.dart';
-import 'screens/chat_page.dart';   // ✅ IMPORTANT
+import 'screens/chat_page.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
@@ -32,9 +32,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 // notification click
 // --------------------
 void handleNotificationClickFromData(Map<String, dynamic> data) {
-
   if (data['target'] == 'chat') {
-
     final chefId = data['chefId'];
     final customerId = data['customerId'];
     final chefName = data['chefName'];
@@ -52,10 +50,21 @@ void handleNotificationClickFromData(Map<String, dynamic> data) {
   }
 }
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
+  // ✅ Start UI immediately
+  runApp(const MyApp());
+
+  // ✅ Do notifications setup AFTER UI
+  _initNotifications();
+}
+
+// ----------------------------------------
+// All notification work moved here
+// ----------------------------------------
+Future<void> _initNotifications() async {
   await FirebaseMessaging.instance.requestPermission();
 
   const AndroidInitializationSettings initializationSettingsAndroid =
@@ -83,7 +92,6 @@ void main() async {
 
   // -------------------- FOREGROUND --------------------
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-
     final notification = message.notification;
     final android = message.notification?.android;
 
@@ -101,7 +109,7 @@ void main() async {
             priority: Priority.high,
           ),
         ),
-        payload: jsonEncode(message.data),   // ✅ needed for click
+        payload: jsonEncode(message.data),
       );
     }
   });
@@ -125,8 +133,6 @@ void main() async {
       handleNotificationClickFromData(initialMessage.data);
     });
   }
-
-  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -143,11 +149,8 @@ class MyApp extends StatelessWidget {
       ),
       home: const AuthWrapper(),
 
-      // ✅ VERY IMPORTANT
       onGenerateRoute: (settings) {
-
         if (settings.name == '/chat') {
-
           final args = settings.arguments as Map<String, dynamic>;
 
           return MaterialPageRoute(
@@ -180,7 +183,6 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
