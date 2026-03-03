@@ -29,7 +29,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 // --------------------
-// notification click
+// Notification click handler
 // --------------------
 void handleNotificationClickFromData(Map<String, dynamic> data) {
   if (data['target'] == 'chat') {
@@ -54,15 +54,24 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // ✅ Start UI immediately
+  // Run UI immediately
   runApp(const MyApp());
 
-  // ✅ Do notifications setup AFTER UI
+  // Setup notifications AFTER UI
   _initNotifications();
+
+  // Handle terminated state (app opened via notification) with slight delay
+  final RemoteMessage? initialMessage =
+  await FirebaseMessaging.instance.getInitialMessage();
+  if (initialMessage != null) {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      handleNotificationClickFromData(initialMessage.data);
+    });
+  }
 }
 
 // ----------------------------------------
-// All notification work moved here
+// Notifications setup
 // ----------------------------------------
 Future<void> _initNotifications() async {
   await FirebaseMessaging.instance.requestPermission();
@@ -78,9 +87,7 @@ Future<void> _initNotifications() async {
     onDidReceiveNotificationResponse: (details) {
       if (details.payload != null && details.payload!.isNotEmpty) {
         final data = jsonDecode(details.payload!);
-        handleNotificationClickFromData(
-          Map<String, dynamic>.from(data),
-        );
+        handleNotificationClickFromData(Map<String, dynamic>.from(data));
       }
     },
   );
@@ -90,7 +97,7 @@ Future<void> _initNotifications() async {
       AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
 
-  // -------------------- FOREGROUND --------------------
+  // Foreground messages
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final notification = message.notification;
     final android = message.notification?.android;
@@ -114,25 +121,13 @@ Future<void> _initNotifications() async {
     }
   });
 
-  // -------------------- BACKGROUND --------------------
-  FirebaseMessaging.onBackgroundMessage(
-    _firebaseMessagingBackgroundHandler,
-  );
+  // Background messages
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // -------------------- BACKGROUND → TAP --------------------
+  // When app is in background and tapped
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     handleNotificationClickFromData(message.data);
   });
-
-  // -------------------- TERMINATED --------------------
-  final RemoteMessage? initialMessage =
-  await FirebaseMessaging.instance.getInitialMessage();
-
-  if (initialMessage != null) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      handleNotificationClickFromData(initialMessage.data);
-    });
-  }
 }
 
 class MyApp extends StatelessWidget {
@@ -144,15 +139,13 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       title: 'Nearby Hungry',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-      ),
+      theme: ThemeData(primarySwatch: Colors.deepPurple),
       home: const AuthWrapper(),
 
+      // Chat route
       onGenerateRoute: (settings) {
         if (settings.name == '/chat') {
           final args = settings.arguments as Map<String, dynamic>;
-
           return MaterialPageRoute(
             builder: (_) => ChatPage(
               chefId: args['chefId'],
@@ -161,7 +154,6 @@ class MyApp extends StatelessWidget {
             ),
           );
         }
-
         return null;
       },
 
@@ -175,6 +167,9 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// --------------------
+// Auth wrapper to show login/home
+// --------------------
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
