@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
-// ✅ NEW
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -17,6 +15,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+
   bool isLoading = false;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -32,7 +31,6 @@ class _LoginPageState extends State<LoginPage> {
       );
     });
 
-    // ✅ Keep FCM token always updated
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
@@ -46,7 +44,13 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  // ✅ Save token once after login
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _saveFcmToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -62,7 +66,7 @@ class _LoginPageState extends State<LoginPage> {
     }, SetOptions(merge: true));
   }
 
-  void loginWithEmail() async {
+  Future<void> loginWithEmail() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
@@ -71,14 +75,12 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$').hasMatch(email)) {
+    if (!RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w]{2,4}$').hasMatch(email)) {
       showSnack('Enter a valid email');
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
       await _auth.signInWithEmailAndPassword(
@@ -86,40 +88,42 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
       );
 
-      // ✅ save fresh FCM token
       await _saveFcmToken();
 
-      Navigator.pushReplacementNamed(context, '/home');
+      if (!mounted) return;
+
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/home',
+            (route) => false,
+      );
     } on FirebaseAuthException catch (e) {
       String msg = 'Login failed';
+
       if (e.code == 'user-not-found') {
         msg = 'No user found with this email';
       } else if (e.code == 'wrong-password') {
         msg = 'Wrong password';
       }
-      showSnack(msg);
+
+      if (mounted) showSnack(msg);
     } catch (e) {
-      showSnack('Something went wrong');
+      if (mounted) showSnack('Something went wrong');
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
-  void loginWithGoogle() async {
-    setState(() {
-      isLoading = true;
-    });
+  Future<void> loginWithGoogle() async {
+    setState(() => isLoading = true);
 
     try {
       final GoogleSignInAccount? googleUser =
       await GoogleSignIn().signIn();
 
       if (googleUser == null) {
-        setState(() {
-          isLoading = false;
-        });
+        if (mounted) setState(() => isLoading = false);
         return;
       }
 
@@ -133,15 +137,17 @@ class _LoginPageState extends State<LoginPage> {
 
       await _auth.signInWithCredential(credential);
 
-      // ✅ save fresh FCM token
       await _saveFcmToken();
 
-      Navigator.pushReplacementNamed(context, '/home');
+      if (!mounted) return;
+
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/home',
+            (route) => false,
+      );
     } catch (e) {
-      showSnack('Google Sign-In failed');
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) showSnack('Google Sign-In failed');
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -198,8 +204,7 @@ class _LoginPageState extends State<LoginPage> {
                               contentPadding:
                               const EdgeInsets.all(18),
                               border: OutlineInputBorder(
-                                borderRadius:
-                                BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(24),
                                 borderSide: BorderSide.none,
                               ),
                             ),
@@ -215,8 +220,7 @@ class _LoginPageState extends State<LoginPage> {
                               contentPadding:
                               const EdgeInsets.all(18),
                               border: OutlineInputBorder(
-                                borderRadius:
-                                BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(24),
                                 borderSide: BorderSide.none,
                               ),
                             ),
@@ -231,11 +235,9 @@ class _LoginPageState extends State<LoginPage> {
                                 backgroundColor:
                                 const Color(0xFF5E176A),
                                 padding:
-                                const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                  BorderRadius.circular(28),
+                                  borderRadius: BorderRadius.circular(28),
                                 ),
                                 elevation: 12,
                               ),
@@ -257,9 +259,8 @@ class _LoginPageState extends State<LoginPage> {
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
-                              onPressed: isLoading
-                                  ? null
-                                  : loginWithGoogle,
+                              onPressed:
+                              isLoading ? null : loginWithGoogle,
                               icon: Image.asset(
                                 'assets/ic_google_logo.png',
                                 height: 24,
@@ -275,11 +276,9 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               style: OutlinedButton.styleFrom(
                                 padding:
-                                const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                  BorderRadius.circular(28),
+                                  borderRadius: BorderRadius.circular(28),
                                 ),
                                 side: const BorderSide(
                                   color: Color(0xFFE0E0E0),
@@ -291,18 +290,15 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           const SizedBox(height: 16),
                           Row(
-                            mainAxisAlignment:
-                            MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
                                 "Don't have an account? ",
-                                style: TextStyle(
-                                    color: Color(0xFF5E176A)),
+                                style: TextStyle(color: Color(0xFF5E176A)),
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pushNamed(
-                                      context, '/register');
+                                  Navigator.pushNamed(context, '/register');
                                 },
                                 child: const Text(
                                   'Register',
