@@ -11,6 +11,7 @@ import 'screens/register_page.dart';
 import 'screens/forgot_password.dart';
 import 'screens/chat_page.dart';
 
+// Notification setup
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
 
@@ -28,15 +29,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 }
 
-// --------------------
-// Notification click handler
-// --------------------
+// Handle notification click
 void handleNotificationClickFromData(Map<String, dynamic> data) {
   if (data['target'] == 'chat') {
     final chefId = data['chefId'];
     final customerId = data['customerId'];
     final chefName = data['chefName'];
-
     if (chefId == null || customerId == null) return;
 
     navigatorKey.currentState?.pushNamed(
@@ -52,27 +50,17 @@ void handleNotificationClickFromData(Map<String, dynamic> data) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
   await Firebase.initializeApp();
 
-  // Run UI immediately
+  // Initialize notifications
+  await _initNotifications();
+
+  // Run app after Firebase + notifications are ready
   runApp(const MyApp());
-
-  // Setup notifications AFTER UI
-  _initNotifications();
-
-  // Handle terminated state (app opened via notification) with slight delay
-  final RemoteMessage? initialMessage =
-  await FirebaseMessaging.instance.getInitialMessage();
-  if (initialMessage != null) {
-    Future.delayed(const Duration(milliseconds: 500), () {
-      handleNotificationClickFromData(initialMessage.data);
-    });
-  }
 }
 
-// ----------------------------------------
-// Notifications setup
-// ----------------------------------------
 Future<void> _initNotifications() async {
   await FirebaseMessaging.instance.requestPermission();
 
@@ -101,7 +89,6 @@ Future<void> _initNotifications() async {
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final notification = message.notification;
     final android = message.notification?.android;
-
     if (notification != null && android != null) {
       flutterLocalNotificationsPlugin.show(
         notification.hashCode,
@@ -124,7 +111,17 @@ Future<void> _initNotifications() async {
   // Background messages
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // When app is in background and tapped
+  // When app opened from terminated state via notification
+  final RemoteMessage? initialMessage =
+  await FirebaseMessaging.instance.getInitialMessage();
+
+  if (initialMessage != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      handleNotificationClickFromData(initialMessage.data);
+    });
+  }
+
+  // Notification click when app is in background
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     handleNotificationClickFromData(message.data);
   });
@@ -141,8 +138,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.deepPurple),
       home: const AuthWrapper(),
-
-      // Chat route
+      routes: {
+        '/login': (_) => const LoginPage(),
+        '/home': (_) => const HomePage(),
+        '/register': (_) => const RegisterPage(),
+        '/forgot_password': (_) => const ForgotPasswordPage(),
+      },
       onGenerateRoute: (settings) {
         if (settings.name == '/chat') {
           final args = settings.arguments as Map<String, dynamic>;
@@ -156,25 +157,51 @@ class MyApp extends StatelessWidget {
         }
         return null;
       },
-
-      routes: {
-        '/login': (context) => const LoginPage(),
-        '/home': (context) => const HomePage(),
-        '/register': (context) => const RegisterPage(),
-        '/forgot_password': (context) => const ForgotPasswordPage(),
-      },
     );
   }
 }
 
-// --------------------
-// Auth wrapper to show login/home
-// --------------------
-class AuthWrapper extends StatelessWidget {
+// ✅ Updated AuthWrapper to fix iOS blank screen issue
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
   @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _initialized = false;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFirebase();
+  }
+
+  Future<void> _initializeFirebase() async {
+    try {
+      await Firebase.initializeApp();
+      setState(() => _initialized = true);
+    } catch (e) {
+      setState(() => _error = true);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_error) {
+      return const Scaffold(
+        body: Center(child: Text('Something went wrong')),
+      );
+    }
+
+    if (!_initialized) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
