@@ -7,42 +7,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:831632114120:android:6ec55afa61234d855e00fd",
-        "android_client_info": {
-          "package_name": "com.example.nearby_hungry_flutter"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "831632114120-tksloidldsh36g0rr97efsk9to5nq4qc.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAWqj9GIi7yPdgcBtH5McFRuoWn3-MercY"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "831632114120-tksloidldsh36g0rr97efsk9to5nq4qc.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "831632114120-ceqon1007ls0ajuss1k6c4lp15tvbbls.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.nearbyHungryFlutter"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:831632114120:android:0e4f88a8853ed53d5e00fd",
         "android_client_info": {
           "package_name": "com.vishal.nearbyhungry"
@@ -78,7 +42,7 @@
               "client_id": "831632114120-ceqon1007ls0ajuss1k6c4lp15tvbbls.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.nearbyHungryFlutter"
+                "bundle_id": "com.vishal.nearbyhungry"
               }
             }
           ]

@@ -1,15 +1,131 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'screens/login_page.dart';
 import 'screens/home_page.dart';
 import 'screens/register_page.dart';
 import 'screens/forgot_password.dart';
+import 'screens/chat_page.dart';   // ✅ IMPORTANT
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'high_importance_channel',
+  'High Importance Notifications',
+  description: 'Nearby Hungry notifications',
+  importance: Importance.high,
+);
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
+// --------------------
+// notification click
+// --------------------
+void handleNotificationClickFromData(Map<String, dynamic> data) {
+
+  if (data['target'] == 'chat') {
+
+    final chefId = data['chefId'];
+    final customerId = data['customerId'];
+    final chefName = data['chefName'];
+
+    if (chefId == null || customerId == null) return;
+
+    navigatorKey.currentState?.pushNamed(
+      '/chat',
+      arguments: {
+        'chefId': chefId,
+        'customerId': customerId,
+        'chefName': chefName,
+      },
+    );
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  await FirebaseMessaging.instance.requestPermission();
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings initializationSettings =
+  InitializationSettings(android: initializationSettingsAndroid);
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (details) {
+      if (details.payload != null && details.payload!.isNotEmpty) {
+        final data = jsonDecode(details.payload!);
+        handleNotificationClickFromData(
+          Map<String, dynamic>.from(data),
+        );
+      }
+    },
+  );
+
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+
+  // -------------------- FOREGROUND --------------------
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+
+    final notification = message.notification;
+    final android = message.notification?.android;
+
+    if (notification != null && android != null) {
+      flutterLocalNotificationsPlugin.show(
+        notification.hashCode,
+        notification.title,
+        notification.body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+        ),
+        payload: jsonEncode(message.data),   // ✅ needed for click
+      );
+    }
+  });
+
+  // -------------------- BACKGROUND --------------------
+  FirebaseMessaging.onBackgroundMessage(
+    _firebaseMessagingBackgroundHandler,
+  );
+
+  // -------------------- BACKGROUND → TAP --------------------
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    handleNotificationClickFromData(message.data);
+  });
+
+  // -------------------- TERMINATED --------------------
+  final RemoteMessage? initialMessage =
+  await FirebaseMessaging.instance.getInitialMessage();
+
+  if (initialMessage != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      handleNotificationClickFromData(initialMessage.data);
+    });
+  }
+
   runApp(const MyApp());
 }
 
@@ -19,14 +135,32 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Nearby Hungry',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
       ),
-
-      // ✅ IMPORTANT
       home: const AuthWrapper(),
+
+      // ✅ VERY IMPORTANT
+      onGenerateRoute: (settings) {
+
+        if (settings.name == '/chat') {
+
+          final args = settings.arguments as Map<String, dynamic>;
+
+          return MaterialPageRoute(
+            builder: (_) => ChatPage(
+              chefId: args['chefId'],
+              customerId: args['customerId'],
+              chefName: args['chefName'],
+            ),
+          );
+        }
+
+        return null;
+      },
 
       routes: {
         '/login': (context) => const LoginPage(),
@@ -48,18 +182,15 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, snapshot) {
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          // small loader only while checking login
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // ✅ user already logged in
         if (snapshot.hasData) {
           return const HomePage();
         }
 
-        // ✅ user not logged in
         return const LoginPage();
       },
     );

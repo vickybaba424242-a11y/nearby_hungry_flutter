@@ -3,6 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+// ✅ NEW
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
@@ -17,7 +21,6 @@ class _LoginPageState extends State<LoginPage> {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // ✅ ADDED ONLY THIS
   @override
   void initState() {
     super.initState();
@@ -28,6 +31,35 @@ class _LoginPageState extends State<LoginPage> {
         context,
       );
     });
+
+    // ✅ Keep FCM token always updated
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set({
+        'fcmToken': newToken,
+      }, SetOptions(merge: true));
+    });
+  }
+
+  // ✅ Save token once after login
+  Future<void> _saveFcmToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set({
+      'fcmToken': token,
+    }, SetOptions(merge: true));
   }
 
   void loginWithEmail() async {
@@ -49,7 +81,14 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // ✅ save fresh FCM token
+      await _saveFcmToken();
+
       Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
       String msg = 'Login failed';
@@ -72,21 +111,30 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       isLoading = true;
     });
+
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser =
+      await GoogleSignIn().signIn();
+
       if (googleUser == null) {
         setState(() {
           isLoading = false;
         });
         return;
       }
+
       final GoogleSignInAuthentication googleAuth =
       await googleUser.authentication;
+
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
+
       await _auth.signInWithCredential(credential);
+
+      // ✅ save fresh FCM token
+      await _saveFcmToken();
 
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
@@ -98,7 +146,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -110,7 +159,6 @@ class _LoginPageState extends State<LoginPage> {
             child: Image.asset(
               'assets/bg_register.jpg',
               fit: BoxFit.cover,
-              // ✅ ADDED ONLY THIS
               gaplessPlayback: true,
               cacheWidth: 1080,
             ),
@@ -147,9 +195,11 @@ class _LoginPageState extends State<LoginPage> {
                               hintText: 'Email',
                               filled: true,
                               fillColor: const Color(0xFFF7F7F7),
-                              contentPadding: const EdgeInsets.all(18),   // ✅ same
+                              contentPadding:
+                              const EdgeInsets.all(18),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius:
+                                BorderRadius.circular(24),
                                 borderSide: BorderSide.none,
                               ),
                             ),
@@ -162,9 +212,11 @@ class _LoginPageState extends State<LoginPage> {
                               hintText: 'Password',
                               filled: true,
                               fillColor: const Color(0xFFF7F7F7),
-                              contentPadding: const EdgeInsets.all(18),   // ✅ same
+                              contentPadding:
+                              const EdgeInsets.all(18),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius:
+                                BorderRadius.circular(24),
                                 borderSide: BorderSide.none,
                               ),
                             ),
@@ -173,13 +225,17 @@ class _LoginPageState extends State<LoginPage> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: isLoading ? null : loginWithEmail,
+                              onPressed:
+                              isLoading ? null : loginWithEmail,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF5E176A),
+                                backgroundColor:
+                                const Color(0xFF5E176A),
                                 padding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                                const EdgeInsets.symmetric(
+                                    vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
+                                  borderRadius:
+                                  BorderRadius.circular(28),
                                 ),
                                 elevation: 12,
                               ),
@@ -201,8 +257,9 @@ class _LoginPageState extends State<LoginPage> {
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
-                              onPressed:
-                              isLoading ? null : loginWithGoogle,
+                              onPressed: isLoading
+                                  ? null
+                                  : loginWithGoogle,
                               icon: Image.asset(
                                 'assets/ic_google_logo.png',
                                 height: 24,
@@ -218,24 +275,29 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               style: OutlinedButton.styleFrom(
                                 padding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                                const EdgeInsets.symmetric(
+                                    vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
+                                  borderRadius:
+                                  BorderRadius.circular(28),
                                 ),
                                 side: const BorderSide(
-                                    color: Color(0xFFE0E0E0), width: 1),
+                                  color: Color(0xFFE0E0E0),
+                                  width: 1,
+                                ),
                                 backgroundColor: Colors.white,
                               ),
                             ),
                           ),
                           const SizedBox(height: 16),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment:
+                            MainAxisAlignment.center,
                             children: [
                               const Text(
                                 "Don't have an account? ",
-                                style:
-                                TextStyle(color: Color(0xFF5E176A)),
+                                style: TextStyle(
+                                    color: Color(0xFF5E176A)),
                               ),
                               GestureDetector(
                                 onTap: () {

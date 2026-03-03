@@ -18,6 +18,8 @@ import '../utils/location_helper.dart';
 import '../widgets/post_card.dart';
 import '../widgets/sidebar.dart';
 
+import 'package:firebase_messaging/firebase_messaging.dart'; // 🔔 NEW
+
 class HomePage extends StatefulWidget {
   final bool showOnlyMyPosts;
   const HomePage({super.key, this.showOnlyMyPosts = false});
@@ -43,11 +45,51 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     showOnlyMyPosts = widget.showOnlyMyPosts;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _startLocationFlow();
+      await _requestNotificationPermission();   // 🔔 updated
     });
 
     _listenUnreadChats();
+  }
+
+  // 🔔 NEW — notification permission + token
+  Future<void> _requestNotificationPermission() async {
+    final messaging = FirebaseMessaging.instance;
+
+    // Ask permission (Android 13+ / iOS)
+    final settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    debugPrint(
+        '🔔 Notification permission: ${settings.authorizationStatus}');
+
+    // Get token
+    final token = await messaging.getToken();
+    debugPrint('✅ FCM TOKEN: $token');
+
+    // Foreground message listener
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint('🔥 Foreground message received');
+      debugPrint('Title: ${message.notification?.title}');
+      debugPrint('Body: ${message.notification?.body}');
+    });
+
+    // When user taps notification and opens app
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('📲 Opened from notification');
+    });
+
+    // When app was terminated and opened by notification
+    final initialMessage =
+    await FirebaseMessaging.instance.getInitialMessage();
+
+    if (initialMessage != null) {
+      debugPrint('🚀 App launched from notification');
+    }
   }
 
   // ---------------- Location FLOW ----------------
@@ -407,7 +449,6 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Column(
         children: [
-          // ✅ UPDATED STRIP (green when ON, red when OFF)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -456,6 +497,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
+
           Expanded(
             child: loadingPosts
                 ? const Center(child: CircularProgressIndicator())
@@ -479,28 +521,33 @@ class _HomePageState extends State<HomePage> {
                   post: post,
                   isOwnPost: isOwnPost,
                   timeText: timeText,
-                  expireText: isOwnPost ? expireText : null,
+                  expireText:
+                  isOwnPost ? expireText : null,
                   onViewPressed: () {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      builder: (_) => DraggableScrollableSheet(
-                        initialChildSize: 0.85,
-                        minChildSize: 0.4,
-                        maxChildSize: 0.95,
-                        builder:
-                            (context, scrollController) {
-                          return PostDetailPage(
-                            postId: post.id,
-                            scrollController: scrollController,
-                          );
-                        },
-                      ),
+                      builder: (_) =>
+                          DraggableScrollableSheet(
+                            initialChildSize: 0.85,
+                            minChildSize: 0.4,
+                            maxChildSize: 0.95,
+                            builder:
+                                (context, scrollController) {
+                              return PostDetailPage(
+                                postId: post.id,
+                                scrollController:
+                                scrollController,
+                              );
+                            },
+                          ),
                     );
                   },
-                  onChatPressed: () => _openChatWithChef(post),
-                  onOptionsPressed: () => _showPostOptions(post),
+                  onChatPressed:
+                      () => _openChatWithChef(post),
+                  onOptionsPressed:
+                      () => _showPostOptions(post),
                 );
               },
             ),

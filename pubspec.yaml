@@ -10,22 +10,24 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
   cupertino_icons: ^1.0.8
 
-  # Firebase (all compatible versions)
+  # Firebase
   firebase_core: ^4.4.0
   firebase_auth: ^6.1.4
   cloud_firestore: ^6.1.2
+  firebase_messaging: ^16.1.1
+
+  flutter_local_notifications: ^17.0.0 
+
   geolocator: ^10.1.0
   share_plus: ^7.2.1
   url_launcher: ^6.2.6
-  firebase_messaging: ^16.1.1
   google_fonts: ^6.2.1
   shared_preferences: ^2.2.2
   intl: ^0.18.1
   dropdown_button2: ^1.9.4
-
-
 
   # Google Sign-In
   google_sign_in: ^6.3.0
@@ -45,15 +47,16 @@ flutter:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/logo/app_logo.png"
+  image_path: assets/logo/app_logo.png
 
 flutter_native_splash:
   color: "#FFFFFF"
-  image: assets/logo/app_logo.png
+  image: assets/logo/splash_logo.png
+
+  android_12:
+    image: assets/logo/splash_logo.png
+    color: "#FFFFFF"
+
   android: true
   ios: true
   web: false
-  android_gravity: center
-  ios_content_mode: center
-
-
