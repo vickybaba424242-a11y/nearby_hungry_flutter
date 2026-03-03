@@ -330,18 +330,21 @@ class _AddPostBottomSheetState extends State<AddPostBottomSheet> {
                       }
                       return null;
                     },
-                    dropdownMaxHeight: dropHeight,
-                    offset: Offset(0, -dropHeight - 8),
-                    dropdownDecoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+
+                    dropdownStyleData: DropdownStyleData(
+                      maxHeight: dropHeight,
+                      offset: Offset(0, -dropHeight - 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
