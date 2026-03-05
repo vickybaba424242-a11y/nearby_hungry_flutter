@@ -65,6 +65,6 @@ class DefaultFirebaseOptions {
     storageBucket: 'nearbyhungry-6a1ab.firebasestorage.app',
     androidClientId: '831632114120-81j3qpv7175jeeu4mjqte4ccfhpmcsld.apps.googleusercontent.com',
     iosClientId: '831632114120-ceqon1007ls0ajuss1k6c4lp15tvbbls.apps.googleusercontent.com',
-    iosBundleId: 'com.example.nearbyHungryFlutter',
+    iosBundleId: 'com.vishal.nearbyhungry',
   );
 }

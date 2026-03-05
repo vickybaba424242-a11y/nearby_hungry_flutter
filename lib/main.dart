@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import 'firebase_options.dart';
+
 import 'screens/login_page.dart';
 import 'screens/home_page.dart';
 import 'screens/register_page.dart';
@@ -26,7 +28,9 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 }
 
 // Handle notification click
@@ -52,8 +56,10 @@ void handleNotificationClickFromData(Map<String, dynamic> data) {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase ONLY ONCE
-  await Firebase.initializeApp();
+  // Initialize Firebase (correct way for iOS)
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // Initialize notifications
   await _initNotifications();
