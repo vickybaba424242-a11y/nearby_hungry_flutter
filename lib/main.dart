@@ -35,6 +35,7 @@ void handleNotificationClickFromData(Map<String, dynamic> data) {
     final chefId = data['chefId'];
     final customerId = data['customerId'];
     final chefName = data['chefName'];
+
     if (chefId == null || customerId == null) return;
 
     navigatorKey.currentState?.pushNamed(
@@ -51,13 +52,12 @@ void handleNotificationClickFromData(Map<String, dynamic> data) {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
+  // Initialize Firebase ONLY ONCE
   await Firebase.initializeApp();
 
   // Initialize notifications
   await _initNotifications();
 
-  // Run app after Firebase + notifications are ready
   runApp(const MyApp());
 }
 
@@ -67,8 +67,14 @@ Future<void> _initNotifications() async {
   const AndroidInitializationSettings initializationSettingsAndroid =
   AndroidInitializationSettings('@mipmap/ic_launcher');
 
+  const DarwinInitializationSettings initializationSettingsIOS =
+  DarwinInitializationSettings();
+
   const InitializationSettings initializationSettings =
-  InitializationSettings(android: initializationSettingsAndroid);
+  InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsIOS,
+  );
 
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
@@ -89,6 +95,7 @@ Future<void> _initNotifications() async {
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final notification = message.notification;
     final android = message.notification?.android;
+
     if (notification != null && android != null) {
       flutterLocalNotificationsPlugin.show(
         notification.hashCode,
@@ -109,9 +116,11 @@ Future<void> _initNotifications() async {
   });
 
   // Background messages
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  FirebaseMessaging.onBackgroundMessage(
+    _firebaseMessagingBackgroundHandler,
+  );
 
-  // When app opened from terminated state via notification
+  // App opened from terminated state
   final RemoteMessage? initialMessage =
   await FirebaseMessaging.instance.getInitialMessage();
 
@@ -121,7 +130,7 @@ Future<void> _initNotifications() async {
     });
   }
 
-  // Notification click when app is in background
+  // App opened from background
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     handleNotificationClickFromData(message.data);
   });
@@ -161,47 +170,11 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ✅ Updated AuthWrapper to fix iOS blank screen issue
-class AuthWrapper extends StatefulWidget {
+class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
-}
-
-class _AuthWrapperState extends State<AuthWrapper> {
-  bool _initialized = false;
-  bool _error = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeFirebase();
-  }
-
-  Future<void> _initializeFirebase() async {
-    try {
-      await Firebase.initializeApp();
-      setState(() => _initialized = true);
-    } catch (e) {
-      setState(() => _error = true);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (_error) {
-      return const Scaffold(
-        body: Center(child: Text('Something went wrong')),
-      );
-    }
-
-    if (!_initialized) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
