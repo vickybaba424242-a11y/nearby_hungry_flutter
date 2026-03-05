@@ -4,22 +4,11 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Default [FirebaseOptions] for use with your Firebase apps.
-///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
+        'DefaultFirebaseOptions have not been configured for web',
       );
     }
     switch (defaultTargetPlatform) {
@@ -28,20 +17,8 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
       case TargetPlatform.linux:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
       default:
         throw UnsupportedError(
           'DefaultFirebaseOptions are not supported for this platform.',
@@ -51,7 +28,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAWqj9GIi7yPdgcBtH5McFRuoWn3-MercY',
-    appId: '1:831632114120:android:6ec55afa61234d855e00fd',
+    appId: '1:831632114120:android:0e4f88a8853ed53d5e00fd',
     messagingSenderId: '831632114120',
     projectId: 'nearbyhungry-6a1ab',
     storageBucket: 'nearbyhungry-6a1ab.firebasestorage.app',
@@ -59,12 +36,14 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCUVgzmUREaOZn7MRdqL2Ke-5F3zJIJo7M',
-    appId: '1:831632114120:ios:814e57a1fd1142d95e00fd',
+    appId: '1:831632114120:ios:61b947a283ffdfa45e00fd',
     messagingSenderId: '831632114120',
     projectId: 'nearbyhungry-6a1ab',
     storageBucket: 'nearbyhungry-6a1ab.firebasestorage.app',
-    androidClientId: '831632114120-81j3qpv7175jeeu4mjqte4ccfhpmcsld.apps.googleusercontent.com',
-    iosClientId: '831632114120-ceqon1007ls0ajuss1k6c4lp15tvbbls.apps.googleusercontent.com',
+    androidClientId:
+    '831632114120-81j3qpv7175jeeu4mjqte4ccfhpmcsld.apps.googleusercontent.com',
+    iosClientId:
+    '831632114120-hsqfmsjh7inl1jnuqrju4tuuf5t4e1ni.apps.googleusercontent.com',
     iosBundleId: 'com.vishal.nearbyhungry',
   );
 }

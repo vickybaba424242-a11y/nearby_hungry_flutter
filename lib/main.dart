@@ -13,7 +13,6 @@ import 'screens/register_page.dart';
 import 'screens/forgot_password.dart';
 import 'screens/chat_page.dart';
 
-// Notification setup
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
 
@@ -33,7 +32,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   );
 }
 
-// Handle notification click
 void handleNotificationClickFromData(Map<String, dynamic> data) {
   if (data['target'] == 'chat') {
     final chefId = data['chefId'];
@@ -56,12 +54,14 @@ void handleNotificationClickFromData(Map<String, dynamic> data) {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase (correct way for iOS)
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Initialize notifications
+  FirebaseMessaging.onBackgroundMessage(
+    _firebaseMessagingBackgroundHandler,
+  );
+
   await _initNotifications();
 
   runApp(const MyApp());
@@ -87,7 +87,9 @@ Future<void> _initNotifications() async {
     onDidReceiveNotificationResponse: (details) {
       if (details.payload != null && details.payload!.isNotEmpty) {
         final data = jsonDecode(details.payload!);
-        handleNotificationClickFromData(Map<String, dynamic>.from(data));
+        handleNotificationClickFromData(
+          Map<String, dynamic>.from(data),
+        );
       }
     },
   );
@@ -97,7 +99,6 @@ Future<void> _initNotifications() async {
       AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
 
-  // Foreground messages
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final notification = message.notification;
     final android = message.notification?.android;
@@ -121,12 +122,6 @@ Future<void> _initNotifications() async {
     }
   });
 
-  // Background messages
-  FirebaseMessaging.onBackgroundMessage(
-    _firebaseMessagingBackgroundHandler,
-  );
-
-  // App opened from terminated state
   final RemoteMessage? initialMessage =
   await FirebaseMessaging.instance.getInitialMessage();
 
@@ -136,7 +131,6 @@ Future<void> _initNotifications() async {
     });
   }
 
-  // App opened from background
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     handleNotificationClickFromData(message.data);
   });
