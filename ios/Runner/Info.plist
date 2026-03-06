@@ -90,6 +90,9 @@
   </dict>
 </array>
 
+<key>GIDClientID</key>
+<string>831632114120-hsqfmsjh7inl1jnuqrju4tuuf5t4e1ni.apps.googleusercontent.com</string>
+
 <key>LSApplicationQueriesSchemes</key>
 <array>
   <string>google</string>

@@ -68,8 +68,22 @@ Future<void> main() async {
 }
 
 Future<void> _initNotifications() async {
-  await FirebaseMessaging.instance.requestPermission();
 
+  /// Request iOS permissions
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  /// Enable Firebase messaging auto init
+  await FirebaseMessaging.instance.setAutoInitEnabled(true);
+
+  /// Get FCM token (for debugging)
+  String? token = await FirebaseMessaging.instance.getToken();
+  debugPrint("FCM TOKEN: $token");
+
+  /// Local notification settings
   const AndroidInitializationSettings initializationSettingsAndroid =
   AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -94,12 +108,15 @@ Future<void> _initNotifications() async {
     },
   );
 
+  /// Android notification channel
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
       AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
 
+  /// Foreground notifications
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+
     final notification = message.notification;
     final android = message.notification?.android;
 
@@ -122,6 +139,7 @@ Future<void> _initNotifications() async {
     }
   });
 
+  /// App opened from notification (terminated state)
   final RemoteMessage? initialMessage =
   await FirebaseMessaging.instance.getInitialMessage();
 
@@ -131,6 +149,7 @@ Future<void> _initNotifications() async {
     });
   }
 
+  /// App opened from notification (background)
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     handleNotificationClickFromData(message.data);
   });
@@ -145,7 +164,9 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       title: 'Nearby Hungry',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.deepPurple),
+      theme: ThemeData(
+        primarySwatch: Colors.deepPurple,
+      ),
       home: const AuthWrapper(),
       routes: {
         '/login': (_) => const LoginPage(),
@@ -178,6 +199,7 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
