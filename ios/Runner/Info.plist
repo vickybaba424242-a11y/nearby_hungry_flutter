@@ -99,6 +99,9 @@
 <key>FirebaseAppDelegateProxyEnabled</key>
 <true/>
 
+<key>FirebaseMessagingAutoInitEnabled</key>
+<true/>
+
 <key>UIBackgroundModes</key>
 <array>
     <string>remote-notification</string>

@@ -1,6 +1,5 @@
 import UIKit
 import Flutter
-import Firebase
 import GoogleSignIn
 
 @main
@@ -11,25 +10,15 @@ import GoogleSignIn
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
 
-    if FirebaseApp.app() == nil {
-      FirebaseApp.configure()
-    }
-
     GeneratedPluginRegistrant.register(with: self)
-
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   override func application(
-    _ app: UIApplication,
+    _ application: UIApplication,
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey : Any] = [:]
   ) -> Bool {
-
-    if GIDSignIn.sharedInstance.handle(url) {
-      return true
-    }
-
-    return super.application(app, open: url, options: options)
+    return GIDSignIn.sharedInstance.handle(url)
   }
 }
