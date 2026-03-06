@@ -2,6 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 
@@ -72,9 +73,22 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Nearby Hungry needs your location to find food near you.</string>
 
-	<!-- Tracking -->
+	<!-- Tracking permission -->
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This helps us improve the app experience.</string>
+
+	<!-- Google Sign-In -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.831632114120-hsqfmsjh7inl1jnuqrju4tuuf5t4e1ni</string>
+			</array>
+		</dict>
+	</array>
 
 </dict>
 </plist>
