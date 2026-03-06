@@ -77,7 +77,7 @@
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This helps us improve the app experience.</string>
 
-	<!-- Google Sign-In -->
+	<!-- Google Sign In -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -92,9 +92,8 @@
 
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
-	<string>google</string>
-	<string>googlechrome</string>
-	<string>com.googleusercontent.apps.831632114120-hsqfmsjh7inl1jnuqrju4tuuf5t4e1ni</string>
+		<string>google</string>
+		<string>googlechrome</string>
 	</array>
 
 </dict>
