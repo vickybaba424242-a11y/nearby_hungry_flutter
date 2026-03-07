@@ -119,12 +119,11 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      final GoogleSignInAccount? googleUser =
-      await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
       if (googleUser == null) {
         if (mounted) setState(() => isLoading = false);
-        return;
+        return; // user cancelled
       }
 
       final GoogleSignInAuthentication googleAuth =
@@ -145,8 +144,12 @@ class _LoginPageState extends State<LoginPage> {
         '/home',
             (route) => false,
       );
+    } on FirebaseAuthException catch (e) {
+      if (mounted) showSnack(e.message ?? 'Google Sign-In failed');
     } catch (e) {
-      if (mounted) showSnack('Google Sign-In failed');
+      // Remove the error snackbar here to avoid false failure
+      print("Google Sign-In error: $e");
+    } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
