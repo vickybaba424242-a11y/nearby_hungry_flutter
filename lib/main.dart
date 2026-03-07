@@ -62,97 +62,95 @@ Future<void> main() async {
     _firebaseMessagingBackgroundHandler,
   );
 
-  await _initNotifications();
-
   runApp(const MyApp());
+
+  // Delay notification initialization to avoid splash freeze
+  Future.delayed(const Duration(seconds: 1), () {
+    _initNotifications();
+  });
 }
 
 Future<void> _initNotifications() async {
+  try {
+    /// Request iOS permissions (do not await to avoid freeze)
+    FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
-  /// Request iOS permissions
-  await FirebaseMessaging.instance.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+    /// Local notification initialization
+    const AndroidInitializationSettings initializationSettingsAndroid =
+    AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  /// Enable Firebase messaging auto init
-  await FirebaseMessaging.instance.setAutoInitEnabled(true);
+    const DarwinInitializationSettings initializationSettingsIOS =
+    DarwinInitializationSettings();
 
-  /// Get FCM token (for debugging)
-  String? token = await FirebaseMessaging.instance.getToken();
-  debugPrint("FCM TOKEN: $token");
+    const InitializationSettings initializationSettings =
+    InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
 
-  /// Local notification settings
-  const AndroidInitializationSettings initializationSettingsAndroid =
-  AndroidInitializationSettings('@mipmap/ic_launcher');
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (details) {
+        if (details.payload != null && details.payload!.isNotEmpty) {
+          final data = jsonDecode(details.payload!);
+          handleNotificationClickFromData(
+            Map<String, dynamic>.from(data),
+          );
+        }
+      },
+    );
 
-  const DarwinInitializationSettings initializationSettingsIOS =
-  DarwinInitializationSettings();
+    /// Android notification channel
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
 
-  const InitializationSettings initializationSettings =
-  InitializationSettings(
-    android: initializationSettingsAndroid,
-    iOS: initializationSettingsIOS,
-  );
+    /// Foreground messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final notification = message.notification;
+      final android = message.notification?.android;
 
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: (details) {
-      if (details.payload != null && details.payload!.isNotEmpty) {
-        final data = jsonDecode(details.payload!);
-        handleNotificationClickFromData(
-          Map<String, dynamic>.from(data),
+      if (notification != null && android != null) {
+        flutterLocalNotificationsPlugin.show(
+          notification.hashCode,
+          notification.title,
+          notification.body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              channel.id,
+              channel.name,
+              channelDescription: channel.description,
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+          ),
+          payload: jsonEncode(message.data),
         );
       }
-    },
-  );
-
-  /// Android notification channel
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(channel);
-
-  /// Foreground notifications
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-
-    final notification = message.notification;
-    final android = message.notification?.android;
-
-    if (notification != null && android != null) {
-      flutterLocalNotificationsPlugin.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            channel.id,
-            channel.name,
-            channelDescription: channel.description,
-            importance: Importance.max,
-            priority: Priority.high,
-          ),
-        ),
-        payload: jsonEncode(message.data),
-      );
-    }
-  });
-
-  /// App opened from notification (terminated state)
-  final RemoteMessage? initialMessage =
-  await FirebaseMessaging.instance.getInitialMessage();
-
-  if (initialMessage != null) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      handleNotificationClickFromData(initialMessage.data);
     });
-  }
 
-  /// App opened from notification (background)
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    handleNotificationClickFromData(message.data);
-  });
+    /// Notification opened while app in background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      handleNotificationClickFromData(message.data);
+    });
+
+    /// Notification opened when app was terminated
+    final RemoteMessage? initialMessage =
+    await FirebaseMessaging.instance.getInitialMessage();
+
+    if (initialMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        handleNotificationClickFromData(initialMessage.data);
+      });
+    }
+  } catch (e) {
+    debugPrint("Notification initialization error: $e");
+  }
 }
 
 class MyApp extends StatelessWidget {
