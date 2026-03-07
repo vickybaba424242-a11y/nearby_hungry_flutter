@@ -133,11 +133,10 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      final GoogleSignInAccount? googleUser =
-      await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        if (mounted) setState(() => isLoading = false);
+        setState(() => isLoading = false);
         return;
       }
 
@@ -149,20 +148,28 @@ class _LoginPageState extends State<LoginPage> {
         idToken: googleAuth.idToken,
       );
 
+      final UserCredential userCredential =
       await _auth.signInWithCredential(credential);
 
-      await _saveFcmToken();
+      if (userCredential.user != null) {
+        await _saveFcmToken();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/home',
-            (route) => false,
-      );
-    } on FirebaseAuthException catch (e) {
-      if (mounted) showSnack(e.message ?? 'Google Sign-In failed');
+        // Delay navigation slightly (important for iOS)
+        Future.microtask(() {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/home',
+                (route) => false,
+          );
+        });
+      }
     } catch (e) {
       print("Google Sign-In error: $e");
+
+      if (mounted) {
+        showSnack("Google Sign-In failed");
+      }
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
