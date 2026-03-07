@@ -19,12 +19,15 @@ class _LoginPageState extends State<LoginPage> {
   bool isLoading = false;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   @override
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _checkLogin();
+
       precacheImage(
         const AssetImage('assets/bg_register.jpg'),
         context,
@@ -42,6 +45,17 @@ class _LoginPageState extends State<LoginPage> {
         'fcmToken': newToken,
       }, SetOptions(merge: true));
     });
+  }
+
+  Future<void> _checkLogin() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null && mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/home',
+            (route) => false,
+      );
+    }
   }
 
   @override
@@ -119,11 +133,12 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser =
+      await _googleSignIn.signIn();
 
       if (googleUser == null) {
         if (mounted) setState(() => isLoading = false);
-        return; // user cancelled
+        return;
       }
 
       final GoogleSignInAuthentication googleAuth =
@@ -147,7 +162,6 @@ class _LoginPageState extends State<LoginPage> {
     } on FirebaseAuthException catch (e) {
       if (mounted) showSnack(e.message ?? 'Google Sign-In failed');
     } catch (e) {
-      // Remove the error snackbar here to avoid false failure
       print("Google Sign-In error: $e");
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -197,6 +211,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 32),
+
                           TextField(
                             controller: emailController,
                             keyboardType: TextInputType.emailAddress,
@@ -212,7 +227,9 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ),
+
                           const SizedBox(height: 16),
+
                           TextField(
                             controller: passwordController,
                             obscureText: true,
@@ -228,7 +245,9 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ),
+
                           const SizedBox(height: 32),
+
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
@@ -237,10 +256,11 @@ class _LoginPageState extends State<LoginPage> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor:
                                 const Color(0xFF5E176A),
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
+                                  borderRadius:
+                                  BorderRadius.circular(28),
                                 ),
                                 elevation: 12,
                               ),
@@ -258,7 +278,9 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ),
+
                           const SizedBox(height: 24),
+
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
@@ -278,10 +300,11 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
+                                  borderRadius:
+                                  BorderRadius.circular(28),
                                 ),
                                 side: const BorderSide(
                                   color: Color(0xFFE0E0E0),
@@ -291,17 +314,21 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ),
+
                           const SizedBox(height: 16),
+
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
                                 "Don't have an account? ",
-                                style: TextStyle(color: Color(0xFF5E176A)),
+                                style: TextStyle(
+                                    color: Color(0xFF5E176A)),
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pushNamed(context, '/register');
+                                  Navigator.pushNamed(
+                                      context, '/register');
                                 },
                                 child: const Text(
                                   'Register',
@@ -313,7 +340,9 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ],
                           ),
+
                           const SizedBox(height: 8),
+
                           GestureDetector(
                             onTap: () {
                               Navigator.pushNamed(
