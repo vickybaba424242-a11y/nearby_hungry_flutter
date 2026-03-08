@@ -370,9 +370,14 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _shareApp() {
-    const link =
-        "https://play.google.com/store/apps/details?id=com.vishal.nearbyhungry";
-    Share.share("Download Nearby Hungry:\n$link");
+    const message =
+        "🍲 Discover home-cooked food near you with Nearby Hungry!\n\n"
+        "Download the app:\n"
+        "Android: https://play.google.com/store/apps/details?id=com.vishal.nearbyhungry\n"
+        "iPhone: Coming soon on App Store\n\n"
+        "Find or share homemade meals easily!";
+
+    Share.share(message);
   }
 
   // ---------------- Build ----------------
