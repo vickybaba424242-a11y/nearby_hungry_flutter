@@ -1,7 +1,6 @@
 import UIKit
 import Flutter
 import Firebase
-import FirebaseMessaging
 import GoogleSignIn
 
 @main
@@ -12,14 +11,11 @@ import GoogleSignIn
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
 
-    FirebaseApp.configure()
-
-    GeneratedPluginRegistrant.register(with: self)
-
-    if #available(iOS 10.0, *) {
-      UNUserNotificationCenter.current().delegate = self
+    if FirebaseApp.app() == nil {
+      FirebaseApp.configure()
     }
 
+    GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
