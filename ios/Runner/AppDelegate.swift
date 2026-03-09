@@ -1,6 +1,5 @@
 import UIKit
 import Flutter
-import Firebase
 import GoogleSignIn
 import UserNotifications
 
@@ -12,18 +11,14 @@ import UserNotifications
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
 
-    // Initialize Firebase
-    FirebaseApp.configure()
+    GeneratedPluginRegistrant.register(with: self)
 
-    // Set notification delegate
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self
     }
 
-    // Register for push notifications
     application.registerForRemoteNotifications()
 
-    GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
