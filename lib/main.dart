@@ -30,6 +30,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  debugPrint("📩 Background message: ${message.messageId}");
 }
 
 void handleNotificationClickFromData(Map<String, dynamic> data) {
@@ -59,97 +61,100 @@ Future<void> main() async {
   );
 
   FirebaseMessaging.onBackgroundMessage(
-    _firebaseMessagingBackgroundHandler,
-  );
+      _firebaseMessagingBackgroundHandler);
+
+  await _initNotifications();
 
   runApp(const MyApp());
-
-  // Delay notification initialization to avoid splash freeze
-  Future.delayed(const Duration(seconds: 1), () {
-    _initNotifications();
-  });
 }
 
 Future<void> _initNotifications() async {
-  try {
-    /// Request iOS permissions (do not await to avoid freeze)
-    FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+  final messaging = FirebaseMessaging.instance;
 
-    /// Local notification initialization
-    const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+  /// Request notification permission
+  await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
 
-    const DarwinInitializationSettings initializationSettingsIOS =
-    DarwinInitializationSettings();
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
 
-    const InitializationSettings initializationSettings =
-    InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
+  /// Get FCM token
+  final token = await messaging.getToken();
+  debugPrint("✅ FCM TOKEN: $token");
 
-    await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (details) {
-        if (details.payload != null && details.payload!.isNotEmpty) {
-          final data = jsonDecode(details.payload!);
-          handleNotificationClickFromData(
-            Map<String, dynamic>.from(data),
-          );
-        }
-      },
-    );
+  /// Local notification setup
+  const AndroidInitializationSettings androidInit =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    /// Android notification channel
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+  const DarwinInitializationSettings iosInit =
+  DarwinInitializationSettings();
 
-    /// Foreground messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      final notification = message.notification;
-      final android = message.notification?.android;
+  const InitializationSettings initSettings = InitializationSettings(
+    android: androidInit,
+    iOS: iosInit,
+  );
 
-      if (notification != null && android != null) {
-        flutterLocalNotificationsPlugin.show(
-          notification.hashCode,
-          notification.title,
-          notification.body,
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              channel.id,
-              channel.name,
-              channelDescription: channel.description,
-              importance: Importance.max,
-              priority: Priority.high,
-            ),
-          ),
-          payload: jsonEncode(message.data),
+  await flutterLocalNotificationsPlugin.initialize(
+    initSettings,
+    onDidReceiveNotificationResponse: (details) {
+      if (details.payload != null && details.payload!.isNotEmpty) {
+        final data = jsonDecode(details.payload!);
+        handleNotificationClickFromData(
+          Map<String, dynamic>.from(data),
         );
       }
-    });
+    },
+  );
 
-    /// Notification opened while app in background
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      handleNotificationClickFromData(message.data);
-    });
+  /// Android notification channel
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
 
-    /// Notification opened when app was terminated
-    final RemoteMessage? initialMessage =
-    await FirebaseMessaging.instance.getInitialMessage();
+  /// Foreground messages
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    final notification = message.notification;
+    final android = message.notification?.android;
 
-    if (initialMessage != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        handleNotificationClickFromData(initialMessage.data);
-      });
+    debugPrint("📩 Foreground notification received");
+
+    if (notification != null && android != null) {
+      flutterLocalNotificationsPlugin.show(
+        notification.hashCode,
+        notification.title,
+        notification.body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+        ),
+        payload: jsonEncode(message.data),
+      );
     }
-  } catch (e) {
-    debugPrint("Notification initialization error: $e");
+  });
+
+  /// Notification opened while app running in background
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    handleNotificationClickFromData(message.data);
+  });
+
+  /// Notification opened when app terminated
+  final RemoteMessage? initialMessage =
+  await FirebaseMessaging.instance.getInitialMessage();
+
+  if (initialMessage != null) {
+    handleNotificationClickFromData(initialMessage.data);
   }
 }
 

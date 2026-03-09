@@ -57,39 +57,17 @@ class _HomePageState extends State<HomePage> {
   Future<void> _requestNotificationPermission() async {
     final messaging = FirebaseMessaging.instance;
 
-    // Ask permission (Android 13+ / iOS)
-    final settings = await messaging.requestPermission(
+    NotificationSettings settings = await messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    debugPrint(
-        '🔔 Notification permission: ${settings.authorizationStatus}');
+    debugPrint('🔔 Permission status: ${settings.authorizationStatus}');
 
-    // Get token
     final token = await messaging.getToken();
-    debugPrint('✅ FCM TOKEN: $token');
 
-    // Foreground message listener
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('🔥 Foreground message received');
-      debugPrint('Title: ${message.notification?.title}');
-      debugPrint('Body: ${message.notification?.body}');
-    });
-
-    // When user taps notification and opens app
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('📲 Opened from notification');
-    });
-
-    // When app was terminated and opened by notification
-    final initialMessage =
-    await FirebaseMessaging.instance.getInitialMessage();
-
-    if (initialMessage != null) {
-      debugPrint('🚀 App launched from notification');
-    }
+    debugPrint('📲 Device FCM Token: $token');
   }
 
   // ---------------- Location FLOW ----------------

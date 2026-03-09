@@ -1,14 +1,27 @@
 import UIKit
 import Flutter
+import Firebase
 import GoogleSignIn
+import UserNotifications
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
 
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+
+    // Initialize Firebase
+    FirebaseApp.configure()
+
+    // Set notification delegate
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self
+    }
+
+    // Register for push notifications
+    application.registerForRemoteNotifications()
 
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
