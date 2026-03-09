@@ -63,9 +63,10 @@ Future<void> main() async {
   FirebaseMessaging.onBackgroundMessage(
       _firebaseMessagingBackgroundHandler);
 
-  await _initNotifications();
-
   runApp(const MyApp());
+
+  // Initialize notifications AFTER UI starts
+  _initNotifications();
 }
 
 Future<void> _initNotifications() async {
