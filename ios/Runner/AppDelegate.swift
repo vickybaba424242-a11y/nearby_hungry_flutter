@@ -1,6 +1,5 @@
 import UIKit
 import Flutter
-import Firebase
 import GoogleSignIn
 
 @main
@@ -10,10 +9,6 @@ import GoogleSignIn
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-
-    if FirebaseApp.app() == nil {
-      FirebaseApp.configure()
-    }
 
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
