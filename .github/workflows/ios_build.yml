@@ -1,51 +1,33 @@
-name: Flutter iOS Build
+name: Flutter iOS Build & Upload
 
 on:
   push:
     branches:
       - main
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 jobs:
   build-ios:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: "3.19.0"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: flutter pub get
 
       - name: Build iOS
-        run: flutter build ios --release --no-codesign
+        run: flutter build ipa --release --no-codesign
 
-      - name: Archive iOS App
+      - name: Upload to TestFlight
         run: |
-          cd ios
-          xcodebuild -workspace Runner.xcworkspace \
-          -scheme Runner \
-          -sdk iphoneos \
-          -configuration Release \
-          archive -archivePath build/Runner.xcarchive \
-          CODE_SIGNING_ALLOWED=NO
-
-      - name: Create IPA
-        run: |
-          cd ios
-          mkdir Payload
-          cp -r build/Runner.xcarchive/Products/Applications/Runner.app Payload
-          zip -r Runner.ipa Payload
-
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: ios/Runner.ipa
+          xcrun altool --upload-app \
+          -f build/ios/ipa/*.ipa \
+          -t ios \
+          -u "${{ secrets.APPLE_ID }}" \
+          -p "${{ secrets.APP_SPECIFIC_PASSWORD }}"
