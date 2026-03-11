@@ -21,11 +21,31 @@ jobs:
         with:
           channel: stable
 
-      - name: Flutter Doctor
-        run: flutter doctor -v
-
       - name: Install Dependencies
         run: flutter pub get
 
       - name: Build iOS
         run: flutter build ios --release --no-codesign
+
+      - name: Archive iOS App
+        run: |
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace \
+          -scheme Runner \
+          -sdk iphoneos \
+          -configuration Release \
+          archive -archivePath build/Runner.xcarchive \
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Create IPA
+        run: |
+          cd ios
+          mkdir Payload
+          cp -r build/Runner.xcarchive/Products/Applications/Runner.app Payload
+          zip -r Runner.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: ios/Runner.ipa
