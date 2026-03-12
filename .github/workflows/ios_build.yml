@@ -1,29 +1,41 @@
-name: Build Flutter iOS
+name: Build Nearby Hungry iOS
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   build-ios:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
+      # 1. Checkout the repo
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.13.5' # your Flutter version
+      # 2. Set up Flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.13.5'
 
-    - name: Install dependencies
-      run: flutter pub get
+      # 3. Install dependencies
+      - name: Flutter Pub Get
+        run: flutter pub get
 
-    - name: Build IPA
-      env:
-        APP_STORE_KEY: ${{ secrets.APP_STORE_KEY }}
-        APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
-        APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
-      run: |
-        flutter build ipa --export-method app-store
+      # 4. Show Flutter & Dart version
+      - name: Show versions
+        run: |
+          flutter --version
+          dart --version
+
+      # 5. Build IPA using App Store Connect API key
+      - name: Build iOS IPA
+        env:
+          APP_STORE_KEY: ${{ secrets.APP_STORE_KEY }}
+          APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
+          APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
+        run: |
+          flutter build ipa --export-method app-store --no-codesign
