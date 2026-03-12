@@ -1,4 +1,4 @@
-name: Nearby Hungry iOS Build
+name: Flutter Build (Android + iOS)
 
 on:
   push:
@@ -6,33 +6,53 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  build-ios:
+  build:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      # Install latest Flutter with Dart >3.10
+      # Install Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.22.3
           channel: stable
 
-      - name: Check Flutter Version
+      # Check versions
+      - name: Flutter Version
         run: |
           flutter --version
           dart --version
 
+      # Get dependencies
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build IPA
+      # Build Android APK
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      # Build iOS IPA
+      - name: Build iOS IPA
         run: flutter build ipa --release --no-codesign
 
+      # Upload Android Artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nearby-hungry-apk
+          path: build/app/outputs/flutter-apk/*.apk
+
+      # Upload iOS Artifact
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: ios-ipa
+          name: nearby-hungry-ipa
           path: build/ios/ipa/*.ipa
