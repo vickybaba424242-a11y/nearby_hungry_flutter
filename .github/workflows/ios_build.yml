@@ -1,4 +1,4 @@
-name: Nearby Hungry Flutter iOS CI/CD
+name: Nearby Hungry Flutter iOS Build
 
 on:
   push:
@@ -11,27 +11,26 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # 1. Checkout code
       - uses: actions/checkout@v4
 
-      # 2. Install Flutter stable 3.13.5 (includes Dart ≥ 3.10.7)
+      # Install Flutter 3.13.5 stable (includes Dart >= 3.10.7)
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: 3.13.5
 
-      # 3. Verify Flutter & Dart versions
+      # Verify versions
       - name: Flutter & Dart Version
         run: |
           flutter --version
           dart --version
 
-      # 4. Get dependencies
+      # Get dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 5. Build iOS IPA
+      # Build IPA
       - name: Build iOS IPA
         env:
           APP_STORE_KEY: ${{ secrets.APP_STORE_KEY }}
@@ -39,8 +38,8 @@ jobs:
           APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
         run: flutter build ipa --export-method app-store --no-codesign
 
-      # 6. Upload IPA artifact
-      - name: Upload IPA Artifact
+      # Upload IPA artifact
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: NearbyHungry.ipa
