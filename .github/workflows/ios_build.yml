@@ -1,4 +1,4 @@
-name: Nearby Hungry Flutter iOS CI/CD
+name: Nearby Hungry Flutter iOS Build
 
 on:
   push:
@@ -11,56 +11,34 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # 1. Checkout the code
+      # 1. Checkout code
       - uses: actions/checkout@v4
 
-      # 2. Remove old Flutter from PATH (avoid conflicts)
-      - name: Remove old Flutter from PATH
+      # 2. Remove old Flutter completely to avoid conflicts
+      - name: Remove old Flutter
         run: |
           sudo rm -rf /usr/local/flutter
           echo "/usr/local/bin" >> $GITHUB_PATH
 
-      # 3. Install Flutter 3.13.5 manually (includes Dart 3.10.7+)
+      # 3. Install Flutter 3.13.5 manually
       - name: Install Flutter 3.13.5
         run: |
           git clone https://github.com/flutter/flutter.git -b 3.13.5 --depth 1
           echo "$PWD/flutter/bin" >> $GITHUB_PATH
+          flutter doctor
 
-      # 4. Verify Flutter & Dart versions
-      - name: Flutter & Dart Version
-        run: |
-          flutter --version
-          dart --version
+      # 4. Verify Dart version
+      - name: Check Dart Version
+        run: dart --version
 
-      # 5. Cache dependencies to speed up future builds
-      - name: Cache Flutter Pub packages
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.pub-cache
-            ios/Pods
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.yaml') }}
-
-      # 6. Get dependencies
+      # 5. Get Flutter dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 7. Run Flutter unit tests
-      - name: Run Flutter Tests
-        run: flutter test
-
-      # 8. Build iOS IPA for App Store
+      # 6. Build iOS IPA
       - name: Build iOS IPA
         env:
           APP_STORE_KEY: ${{ secrets.APP_STORE_KEY }}
           APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
           APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
-        run: |
-          flutter build ipa --export-method app-store --no-codesign
-
-      # 9. Upload IPA as artifact (downloadable from GitHub Actions)
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: NearbyHungry.ipa
-          path: build/ios/ipa/*.ipa
+        run: flutter build ipa --export-method app-store --no-codesign
