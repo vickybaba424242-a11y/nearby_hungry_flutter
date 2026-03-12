@@ -11,26 +11,27 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      # 1. Checkout code
       - uses: actions/checkout@v4
 
-      # Install Flutter 3.13.5 stable (includes Dart >= 3.10.7)
+      # 2. Install official Flutter stable 3.13.5 (includes Dart >= 3.10.7)
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: 3.13.5
 
-      # Verify versions
+      # 3. Verify Flutter & Dart versions
       - name: Flutter & Dart Version
         run: |
           flutter --version
           dart --version
 
-      # Get dependencies
+      # 4. Get dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # Build IPA
+      # 5. Build iOS IPA
       - name: Build iOS IPA
         env:
           APP_STORE_KEY: ${{ secrets.APP_STORE_KEY }}
@@ -38,7 +39,7 @@ jobs:
           APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
         run: flutter build ipa --export-method app-store --no-codesign
 
-      # Upload IPA artifact
+      # 6. Upload IPA artifact
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
