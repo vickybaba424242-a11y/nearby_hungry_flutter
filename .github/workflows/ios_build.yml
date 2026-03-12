@@ -1,4 +1,4 @@
-name: Nearby Hungry iOS Build
+name: Nearby Hungry Flutter iOS Build
 
 on:
   push:
@@ -11,20 +11,24 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      # 1. Checkout code
       - uses: actions/checkout@v4
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.13.5'
+      # 2. Install correct Flutter version manually
+      - name: Install Flutter 3.13.5
+        run: |
+          git clone https://github.com/flutter/flutter.git -b 3.13.5 --depth 1
+          echo "$PWD/flutter/bin" >> $GITHUB_PATH
 
-      - name: Flutter Pub Get
-        run: flutter pub get
-
-      - name: Show Flutter & Dart Versions
+      # 3. Verify Flutter & Dart version
+      - name: Flutter & Dart Version
         run: |
           flutter --version
           dart --version
+
+      # 4. Install dependencies
+      - name: Flutter Pub Get
+        run: flutter pub get
 
       - name: Upgrade Flutter
         run: flutter upgrade --force
