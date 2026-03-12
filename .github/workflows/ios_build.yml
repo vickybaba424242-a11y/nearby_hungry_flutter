@@ -1,42 +1,29 @@
-name: Flutter iOS Build
+name: Build Flutter iOS
 
 on:
   push:
     branches:
       - main
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build-ios:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.13.5' # your Flutter version
 
-      - name: Install Dependencies
-        run: flutter pub get
+    - name: Install dependencies
+      run: flutter pub get
 
-      - name: Install CocoaPods
-        run: |
-          cd ios
-          pod install
-
-      - name: Build IPA
-        run: flutter build ipa --release
-
-      - name: Upload to TestFlight
-        run: |
-          xcrun altool --upload-app \
-          -f build/ios/ipa/*.ipa \
-          -t ios \
-          -u "${{ secrets.APPLE_ID }}" \
-          -p "${{ secrets.APP_SPECIFIC_PASSWORD }}"
+    - name: Build IPA
+      env:
+        APP_STORE_KEY: ${{ secrets.APP_STORE_KEY }}
+        APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
+        APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
+      run: |
+        flutter build ipa --export-method app-store
