@@ -1,4 +1,4 @@
-name: Nearby Hungry Flutter iOS CI
+name: Nearby Hungry iOS Build
 
 on:
   push:
@@ -11,27 +11,24 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # 1. Checkout the repo
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 2. Set up Flutter (correct version for Dart 3.10.7+)
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.13.5'
 
-      # 3. Install dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 4. Show Flutter and Dart version
       - name: Show Flutter & Dart Versions
         run: |
           flutter --version
           dart --version
 
-      # 5. Build IPA for App Store
+      - name: Upgrade Flutter
+        run: flutter upgrade --force
+
       - name: Build iOS IPA
         env:
           APP_STORE_KEY: ${{ secrets.APP_STORE_KEY }}
