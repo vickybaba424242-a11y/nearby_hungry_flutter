@@ -1,3 +1,11 @@
+name: Nearby Hungry Flutter iOS Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
 jobs:
   build-ios:
     runs-on: macos-latest
