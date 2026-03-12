@@ -14,30 +14,18 @@ jobs:
       # 1. Checkout code
       - uses: actions/checkout@v4
 
-      # 2. Remove old Flutter (avoid conflicts)
-      - name: Remove old Flutter
-        run: sudo rm -rf /usr/local/flutter
-
-      # 3. Install Flutter 3.13.5
-      - name: Install Flutter 3.13.5
-        run: git clone https://github.com/flutter/flutter.git -b 3.13.5 --depth 1
-      - name: Add Flutter to PATH
-        run: echo "$PWD/flutter/bin" >> $GITHUB_PATH
-
-      # 4. Verify Flutter & Dart versions (next step, PATH is active)
-      - name: Flutter & Dart Version
+      # 2. Install Flutter 3.13.5 manually and run Flutter commands using full path
+      - name: Install Flutter & Get Dependencies
         run: |
-          flutter --version
-          dart --version
+          git clone https://github.com/flutter/flutter.git -b 3.13.5 --depth 1 flutter
+          ./flutter/bin/flutter --version
+          ./flutter/bin/dart --version
+          ./flutter/bin/flutter pub get
 
-      # 5. Get dependencies
-      - name: Flutter Pub Get
-        run: flutter pub get
-
-      # 6. Build iOS IPA
+      # 3. Build iOS IPA using the same Flutter binary
       - name: Build iOS IPA
         env:
           APP_STORE_KEY: ${{ secrets.APP_STORE_KEY }}
           APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
           APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
-        run: flutter build ipa --export-method app-store --no-codesign
+        run: ./flutter/bin/flutter build ipa --export-method app-store --no-codesign
