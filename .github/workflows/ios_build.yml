@@ -22,20 +22,27 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install Dependencies
+      - name: Install Flutter Dependencies
         run: flutter pub get
 
-      - name: Build iOS
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+
+      - name: Build Flutter iOS
         run: flutter build ios --release --no-codesign
 
       - name: Archive iOS App
         run: |
           cd ios
-          xcodebuild -workspace Runner.xcworkspace \
+          xcodebuild \
+          -workspace Runner.xcworkspace \
           -scheme Runner \
           -sdk iphoneos \
           -configuration Release \
-          archive -archivePath build/Runner.xcarchive \
+          archive \
+          -archivePath build/Runner.xcarchive \
           CODE_SIGNING_ALLOWED=NO
 
       - name: Create IPA
