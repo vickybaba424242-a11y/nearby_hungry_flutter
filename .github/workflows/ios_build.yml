@@ -37,11 +37,21 @@ jobs:
           CERTIFICATE_BASE64: ${{ secrets.IOS_P12_CERTIFICATE }}
           CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
         run: |
-          echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          echo "$CERTIFICATE_BASE64" > cert_base64.txt
+          base64 --decode cert_base64.txt > certificate.p12
+
           security create-keychain -p temp build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p temp build.keychain
-          security import certificate.p12 -k build.keychain -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+
+          security import certificate.p12 \
+            -k build.keychain \
+            -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s -k temp build.keychain
 
       # Install Provisioning Profile
       - name: Install Provisioning Profile
@@ -49,7 +59,8 @@ jobs:
           PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE }}
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "$PROFILE_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          echo "$PROFILE_BASE64" > profile_base64.txt
+          base64 --decode profile_base64.txt > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
       # Build Signed IPA
       - name: Build iOS IPA
