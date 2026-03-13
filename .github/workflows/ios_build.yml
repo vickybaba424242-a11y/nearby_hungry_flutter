@@ -31,14 +31,13 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # Install Apple Certificate
       - name: Install Apple Certificate
         env:
           CERTIFICATE_BASE64: ${{ secrets.IOS_P12_CERTIFICATE }}
           CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
         run: |
           echo "$CERTIFICATE_BASE64" > cert_base64.txt
-          base64 --decode cert_base64.txt > certificate.p12
+          base64 -D -i cert_base64.txt -o certificate.p12
 
           security create-keychain -p temp build.keychain
           security default-keychain -s build.keychain
@@ -53,20 +52,17 @@ jobs:
             -S apple-tool:,apple: \
             -s -k temp build.keychain
 
-      # Install Provisioning Profile
       - name: Install Provisioning Profile
         env:
           PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE }}
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "$PROFILE_BASE64" > profile_base64.txt
-          base64 --decode profile_base64.txt > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          base64 -D -i profile_base64.txt -o ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
-      # Build Signed IPA
       - name: Build iOS IPA
         run: flutter build ipa --release --export-method app-store
 
-      # Upload IPA
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
