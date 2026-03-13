@@ -36,7 +36,7 @@ jobs:
           CERTIFICATE_BASE64: ${{ secrets.IOS_P12_CERTIFICATE }}
           CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
         run: |
-          echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          printf "%s" "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
 
           security create-keychain -p temp build.keychain
           security default-keychain -s build.keychain
