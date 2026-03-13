@@ -31,11 +31,11 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build iOS IPA
-        run: flutter build ipa --release
+      - name: Build iOS (No Code Sign)
+        run: flutter build ios --release --no-codesign
 
-      - name: Upload IPA
+      - name: Upload iOS Build
         uses: actions/upload-artifact@v4
         with:
-          name: nearby-hungry-ipa
-          path: build/ios/ipa/*.ipa
+          name: nearby-hungry-ios
+          path: build/ios/iphoneos/*.app
