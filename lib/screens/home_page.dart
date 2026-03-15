@@ -18,7 +18,7 @@ import '../utils/location_helper.dart';
 import '../widgets/post_card.dart';
 import '../widgets/sidebar.dart';
 
-import 'package:firebase_messaging/firebase_messaging.dart'; // 🔔 NEW
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class HomePage extends StatefulWidget {
   final bool showOnlyMyPosts;
@@ -46,33 +46,61 @@ class _HomePageState extends State<HomePage> {
     showOnlyMyPosts = widget.showOnlyMyPosts;
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 300));
       _startLocationFlow();
-      await _requestNotificationPermission();   // 🔔 updated
+      _requestNotificationPermission();
     });
 
     _listenUnreadChats();
   }
 
-  // 🔔 NEW — notification permission + token
   Future<void> _requestNotificationPermission() async {
     final messaging = FirebaseMessaging.instance;
 
-    NotificationSettings settings = await messaging.requestPermission(
+    final settings = await messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    debugPrint('🔔 Permission status: ${settings.authorizationStatus}');
+    debugPrint("🔔 HomePage permission status: ${settings.authorizationStatus}");
 
-    final token = await messaging.getToken();
+    try {
+      String? apnsToken = await messaging.getAPNSToken();
+      int retry = 0;
 
-    debugPrint('📲 Device FCM Token: $token');
+      while (apnsToken == null && retry < 3) {
+        await Future.delayed(const Duration(milliseconds: 800));
+        apnsToken = await messaging.getAPNSToken();
+        retry++;
+      }
+
+      debugPrint("🍎 HomePage APNS token: $apnsToken");
+
+      if (apnsToken == null) {
+        debugPrint(
+          "⚠️ APNS token not ready in HomePage, skipping FCM token fetch",
+        );
+        return;
+      }
+
+      final token = await messaging.getToken();
+      debugPrint("🔑 HomePage FCM token: $token");
+
+      final user = _auth.currentUser;
+      if (user != null && token != null) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'fcmToken': token,
+        }, SetOptions(merge: true));
+      }
+    } catch (e, st) {
+      debugPrint("❌ HomePage notification setup failed: $e");
+      debugPrintStack(stackTrace: st);
+    }
   }
 
-  // ---------------- Location FLOW ----------------
-
   Future<void> _startLocationFlow() async {
+    debugPrint("🚀 Starting location flow...");
     await _askLocationFirstTimeOnly();
     await _ensureLocationAndLoad();
   }
@@ -80,12 +108,16 @@ class _HomePageState extends State<HomePage> {
   Future<void> _askLocationFirstTimeOnly() async {
     final prefs = await SharedPreferences.getInstance();
     final alreadyAsked = prefs.getBool('locationAsked') ?? false;
+    debugPrint("📍 Location asked before: $alreadyAsked");
 
     if (alreadyAsked) return;
 
     LocationPermission permission = await Geolocator.checkPermission();
+    debugPrint("📍 Initial location permission: $permission");
+
     if (permission == LocationPermission.denied) {
-      await Geolocator.requestPermission();
+      permission = await Geolocator.requestPermission();
+      debugPrint("📍 Permission after request: $permission");
     }
 
     await prefs.setBool('locationAsked', true);
@@ -93,13 +125,16 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _ensureLocationAndLoad() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    debugPrint("📍 Location service enabled: $serviceEnabled");
+
     if (!serviceEnabled) {
       await showDialog(
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('Location required'),
-          content:
-          const Text('Please turn ON location to see nearby food posts.'),
+          content: const Text(
+            'Please turn ON location to see nearby food posts.',
+          ),
           actions: [
             TextButton(
               onPressed: () async {
@@ -115,8 +150,11 @@ class _HomePageState extends State<HomePage> {
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
+    debugPrint("📍 Current permission before load: $permission");
+
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
+      debugPrint("📍 Permission after second request: $permission");
     }
 
     if (permission == LocationPermission.deniedForever) {
@@ -153,19 +191,32 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _initLocation() async {
+    debugPrint("📍 initLocation called");
+
     final position = await LocationHelper.getCurrentLocation(context);
     if (position != null) {
+      debugPrint(
+        "📍 User location: ${position.latitude}, ${position.longitude}",
+      );
+
       setState(() {
         userLat = position.latitude;
         userLng = position.longitude;
       });
-      _updateUserLocationInFirestore(position.latitude, position.longitude);
+
+      await _updateUserLocationInFirestore(
+        position.latitude,
+        position.longitude,
+      );
+    } else {
+      debugPrint("❌ LocationHelper returned null position");
     }
   }
 
   Future<void> _updateUserLocationInFirestore(double lat, double lng) async {
     final user = _auth.currentUser;
     if (user != null) {
+      debugPrint("📍 Updating user location in Firestore for ${user.uid}");
       await _firestore.collection('users').doc(user.uid).update({
         'latitude': lat,
         'longitude': lng,
@@ -173,54 +224,83 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // ---------------- Posts ----------------
-
   void _loadPosts() {
     final userId = _auth.currentUser?.uid ?? '';
+
+    debugPrint("📝 Loading posts for user: $userId");
+    debugPrint("📍 Current location before query: $userLat, $userLng");
+    debugPrint("👤 showOnlyMyPosts: $showOnlyMyPosts");
 
     _firestore
         .collection('posts')
         .orderBy('timestamp', descending: true)
         .snapshots()
         .listen((snapshot) {
+      debugPrint("📦 Total Firestore posts: ${snapshot.docs.length}");
+
       final freshPosts = <Post>[];
 
       for (var doc in snapshot.docs) {
         final post = Post.fromDocument(doc);
         final expireAt = post.expireAt?.toDate().millisecondsSinceEpoch;
 
+        debugPrint(
+          "📄 Post ${post.id} | creator=${post.creatorId} | lat=${post.latitude} | lng=${post.longitude}",
+        );
+
         if (expireAt != null &&
             expireAt < DateTime.now().millisecondsSinceEpoch) {
+          debugPrint("⏰ Post expired, deleting: ${post.id}");
           doc.reference.delete();
           continue;
         }
 
         if (showOnlyMyPosts) {
-          if (post.creatorId == userId) freshPosts.add(post);
-        } else {
-          if (post.creatorId != userId &&
-              userLat != null &&
-              userLng != null &&
-              _distanceInKm(
-                userLat!,
-                userLng!,
-                post.latitude,
-                post.longitude,
-              ) <=
-                  5.0) {
+          if (post.creatorId == userId) {
+            debugPrint("✅ Added to My Posts: ${post.id}");
             freshPosts.add(post);
+          } else {
+            debugPrint("🚫 Skipped (not my post): ${post.id}");
+          }
+        } else {
+          if (post.creatorId == userId) {
+            debugPrint("🚫 Skipped own post on Home: ${post.id}");
+            continue;
+          }
+
+          if (userLat == null || userLng == null) {
+            debugPrint("🚫 Skipped because user location is null: ${post.id}");
+            continue;
+          }
+
+          final distance = _distanceInKm(
+            userLat!,
+            userLng!,
+            post.latitude,
+            post.longitude,
+          );
+
+          debugPrint("📏 Distance to post ${post.id}: $distance km");
+
+          if (distance <= 5.0) {
+            debugPrint("✅ Added nearby post: ${post.id}");
+            freshPosts.add(post);
+          } else {
+            debugPrint("🚫 Skipped, farther than 5km: ${post.id}");
           }
         }
       }
 
-      setState(() {
-        posts = freshPosts;
-        loadingPosts = false;
-      });
+      debugPrint("✅ Visible posts count: ${freshPosts.length}");
+
+      if (mounted) {
+        setState(() {
+          posts = freshPosts;
+          loadingPosts = false;
+        });
+      }
     });
   }
-
-  // ---------------- Chats ----------------
 
   void _listenUnreadChats() {
     final userId = _auth.currentUser?.uid;
@@ -238,13 +318,13 @@ class _HomePageState extends State<HomePage> {
         if (count > 0) unread += 1;
       }
 
-      setState(() {
-        unreadChats = unread;
-      });
+      if (mounted) {
+        setState(() {
+          unreadChats = unread;
+        });
+      }
     });
   }
-
-  // ---------------- Helpers ----------------
 
   double _distanceInKm(double lat1, double lon1, double lat2, double lon2) {
     const R = 6371.0;
@@ -268,8 +348,6 @@ class _HomePageState extends State<HomePage> {
         "${date.hour.toString().padLeft(2, '0')}:"
         "${date.minute.toString().padLeft(2, '0')}";
   }
-
-  // ---------------- UI actions ----------------
 
   Future<void> _openChatWithChef(Post post) async {
     final myId = _auth.currentUser!.uid;
@@ -320,8 +398,9 @@ class _HomePageState extends State<HomePage> {
       isScrollControlled: true,
       context: context,
       builder: (_) => Padding(
-        padding:
-        EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: AddPostBottomSheet(
           postToEdit: postToEdit,
           onPostCreated: () {
@@ -355,13 +434,25 @@ class _HomePageState extends State<HomePage> {
         "iOS: Coming soon on App Store\n\n"
         "Find or share homemade meals easily!";
 
-    Share.share(
-      message,
-      subject: "Nearby Hungry App",
-    );
-  }
+    try {
+      final box = context.findRenderObject() as RenderBox?;
 
-  // ---------------- Build ----------------
+      if (box != null && box.hasSize) {
+        Share.share(
+          message,
+          subject: "Nearby Hungry App",
+          sharePositionOrigin: box.localToGlobal(Offset.zero) & box.size,
+        );
+      } else {
+        Share.share(
+          message,
+          subject: "Nearby Hungry App",
+        );
+      }
+    } catch (e) {
+      debugPrint("❌ Share failed: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -425,7 +516,9 @@ class _HomePageState extends State<HomePage> {
                     child: Text(
                       unreadChats > 99 ? '99+' : unreadChats.toString(),
                       style: const TextStyle(
-                          fontSize: 10, color: Colors.white),
+                        fontSize: 10,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -460,7 +553,6 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -477,66 +569,61 @@ class _HomePageState extends State<HomePage> {
                   child: Text(
                     'Share your home-cooked meals & earn! 🍽️💸',
                     style: TextStyle(
-                        color: Colors.black, fontWeight: FontWeight.bold),
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 )
               ],
             ),
           ),
-
           Expanded(
             child: loadingPosts
                 ? const Center(child: CircularProgressIndicator())
                 : posts.isEmpty
-                ? const Center(child: Text('No posts nearby'))
-                : ListView.builder(
-              padding: const EdgeInsets.only(bottom: 16),
-              itemCount: posts.length,
-              itemBuilder: (context, index) {
-                final post = posts[index];
-                final myId = _auth.currentUser!.uid;
-                final isOwnPost = post.creatorId == myId;
-                final timeText = post.timestamp != null
-                    ? _formatTime(post.timestamp!.toDate())
-                    : "Unknown";
-                final expireText = post.expireAt != null
-                    ? _formatTime(post.expireAt!.toDate())
-                    : null;
+                    ? const Center(child: Text('No posts nearby'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        itemCount: posts.length,
+                        itemBuilder: (context, index) {
+                          final post = posts[index];
+                          final myId = _auth.currentUser!.uid;
+                          final isOwnPost = post.creatorId == myId;
+                          final timeText = post.timestamp != null
+                              ? _formatTime(post.timestamp!.toDate())
+                              : "Unknown";
+                          final expireText = post.expireAt != null
+                              ? _formatTime(post.expireAt!.toDate())
+                              : null;
 
-                return PostCard(
-                  post: post,
-                  isOwnPost: isOwnPost,
-                  timeText: timeText,
-                  expireText:
-                  isOwnPost ? expireText : null,
-                  onViewPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) =>
-                          DraggableScrollableSheet(
-                            initialChildSize: 0.85,
-                            minChildSize: 0.4,
-                            maxChildSize: 0.95,
-                            builder:
-                                (context, scrollController) {
-                              return PostDetailPage(
-                                postId: post.id,
-                                scrollController:
-                                scrollController,
+                          return PostCard(
+                            post: post,
+                            isOwnPost: isOwnPost,
+                            timeText: timeText,
+                            expireText: isOwnPost ? expireText : null,
+                            onViewPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (_) => DraggableScrollableSheet(
+                                  initialChildSize: 0.85,
+                                  minChildSize: 0.4,
+                                  maxChildSize: 0.95,
+                                  builder: (context, scrollController) {
+                                    return PostDetailPage(
+                                      postId: post.id,
+                                      scrollController: scrollController,
+                                    );
+                                  },
+                                ),
                               );
                             },
-                          ),
-                    );
-                  },
-                  onChatPressed:
-                      () => _openChatWithChef(post),
-                  onOptionsPressed:
-                      () => _showPostOptions(post),
-                );
-              },
-            ),
+                            onChatPressed: () => _openChatWithChef(post),
+                            onOptionsPressed: () => _showPostOptions(post),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -546,16 +633,11 @@ class _HomePageState extends State<HomePage> {
         selectedItemColor: Colors.red,
         unselectedItemColor: Colors.black,
         items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.list), label: 'My Posts'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.add_box), label: 'Add Post'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.help), label: 'Help'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.share), label: 'Share'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'My Posts'),
+          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Add Post'),
+          BottomNavigationBarItem(icon: Icon(Icons.help), label: 'Help'),
+          BottomNavigationBarItem(icon: Icon(Icons.share), label: 'Share'),
         ],
         currentIndex: showOnlyMyPosts ? 1 : 0,
         onTap: (index) {
@@ -573,8 +655,9 @@ class _HomePageState extends State<HomePage> {
               break;
             case 3:
               showDialog(
-                  context: context,
-                  builder: (_) => const HelpSupportPage());
+                context: context,
+                builder: (_) => const HelpSupportPage(),
+              );
               break;
             case 4:
               _shareApp();

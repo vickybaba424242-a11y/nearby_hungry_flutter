@@ -38,10 +38,7 @@ class _LoginPageState extends State<LoginPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'fcmToken': newToken,
       }, SetOptions(merge: true));
     });
@@ -53,7 +50,7 @@ class _LoginPageState extends State<LoginPage> {
     if (user != null && mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/home',
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -69,20 +66,34 @@ class _LoginPageState extends State<LoginPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token == null) return;
+    try {
+      final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+      debugPrint("🍎 LoginPage APNS token: $apnsToken");
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .set({
-      'fcmToken': token,
-    }, SetOptions(merge: true));
+      if (apnsToken == null) {
+        debugPrint("⚠️ APNS token not ready, skipping FCM token save");
+        return;
+      }
+
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'fcmToken': token,
+      }, SetOptions(merge: true));
+
+      debugPrint("✅ FCM token saved for user ${user.uid}");
+    } catch (e) {
+      debugPrint("❌ Failed to save FCM token: $e");
+    }
   }
 
   Future<void> loginWithEmail() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
+
+    debugPrint("LOGIN ATTEMPT: $email");
+    debugPrint("PASSWORD LENGTH: ${password.length}");
 
     if (email.isEmpty || password.isEmpty) {
       showSnack('Please enter email and password');
@@ -97,10 +108,12 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      await _auth.signInWithEmailAndPassword(
+      final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      debugPrint("✅ LOGIN SUCCESS: ${userCredential.user?.uid}");
 
       await _saveFcmToken();
 
@@ -108,20 +121,47 @@ class _LoginPageState extends State<LoginPage> {
 
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/home',
-            (route) => false,
+        (route) => false,
       );
     } on FirebaseAuthException catch (e) {
-      String msg = 'Login failed';
+      debugPrint("❌ LOGIN ERROR CODE: ${e.code}");
+      debugPrint("❌ LOGIN ERROR MESSAGE: ${e.message}");
 
-      if (e.code == 'user-not-found') {
-        msg = 'No user found with this email';
-      } else if (e.code == 'wrong-password') {
-        msg = 'Wrong password';
+      String msg;
+
+      switch (e.code) {
+        case 'user-not-found':
+          msg = 'No user found with this email';
+          break;
+        case 'wrong-password':
+          msg = 'Wrong password';
+          break;
+        case 'invalid-email':
+          msg = 'Invalid email address';
+          break;
+        case 'invalid-credential':
+          msg = 'Invalid email or password';
+          break;
+        case 'user-disabled':
+          msg = 'This account has been disabled';
+          break;
+        case 'too-many-requests':
+          msg = 'Too many attempts. Try again later';
+          break;
+        case 'network-request-failed':
+          msg = 'Network error. Check your internet connection';
+          break;
+        case 'operation-not-allowed':
+          msg = 'Email/password login is not enabled in Firebase';
+          break;
+        default:
+          msg = e.message ?? 'Login failed';
       }
 
       if (mounted) showSnack(msg);
     } catch (e) {
-      if (mounted) showSnack('Something went wrong');
+      debugPrint("❌ LOGIN UNKNOWN ERROR: $e");
+      if (mounted) showSnack('Something went wrong: $e');
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
@@ -133,15 +173,19 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
+      await _googleSignIn.signOut();
+
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        setState(() => isLoading = false);
+        if (mounted) {
+          setState(() => isLoading = false);
+        }
         return;
       }
 
       final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
+          await googleUser.authentication;
 
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -149,7 +193,9 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       final userCredential =
-      await FirebaseAuth.instance.signInWithCredential(credential);
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      debugPrint("✅ GOOGLE LOGIN SUCCESS: ${userCredential.user?.uid}");
 
       if (userCredential.user != null) {
         await _saveFcmToken();
@@ -158,33 +204,40 @@ class _LoginPageState extends State<LoginPage> {
 
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/home',
-              (route) => false,
+          (route) => false,
         );
       }
+    } on FirebaseAuthException catch (e) {
+      debugPrint("❌ GOOGLE LOGIN ERROR CODE: ${e.code}");
+      debugPrint("❌ GOOGLE LOGIN ERROR MESSAGE: ${e.message}");
+
+      if (mounted) {
+        showSnack(e.message ?? "Google Sign-In failed");
+      }
     } catch (e) {
-      // IMPORTANT: check if user already logged in
+      debugPrint("❌ GOOGLE SIGN-IN ERROR: $e");
+
       if (FirebaseAuth.instance.currentUser != null) {
         if (!mounted) return;
 
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/home',
-              (route) => false,
+          (route) => false,
         );
       } else {
         if (mounted) {
           showSnack("Google Sign-In failed");
         }
       }
-
-      print("Google Sign-In error: $e");
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
   void showSnack(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
   }
 
   @override
@@ -225,7 +278,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 32),
-
                           TextField(
                             controller: emailController,
                             keyboardType: TextInputType.emailAddress,
@@ -233,17 +285,14 @@ class _LoginPageState extends State<LoginPage> {
                               hintText: 'Email',
                               filled: true,
                               fillColor: const Color(0xFFF7F7F7),
-                              contentPadding:
-                              const EdgeInsets.all(18),
+                              contentPadding: const EdgeInsets.all(18),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(24),
                                 borderSide: BorderSide.none,
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 16),
-
                           TextField(
                             controller: passwordController,
                             obscureText: true,
@@ -251,55 +300,46 @@ class _LoginPageState extends State<LoginPage> {
                               hintText: 'Password',
                               filled: true,
                               fillColor: const Color(0xFFF7F7F7),
-                              contentPadding:
-                              const EdgeInsets.all(18),
+                              contentPadding: const EdgeInsets.all(18),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(24),
                                 borderSide: BorderSide.none,
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 32),
-
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed:
-                              isLoading ? null : loginWithEmail,
+                              onPressed: isLoading ? null : loginWithEmail,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                const Color(0xFF5E176A),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                backgroundColor: const Color(0xFF5E176A),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                  BorderRadius.circular(28),
+                                  borderRadius: BorderRadius.circular(28),
                                 ),
                                 elevation: 12,
                               ),
                               child: isLoading
                                   ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
+                                      color: Colors.white,
+                                    )
                                   : const Text(
-                                'Login',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
+                                      'Login',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                             ),
                           ),
-
                           const SizedBox(height: 24),
-
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
-                              onPressed:
-                              isLoading ? null : loginWithGoogle,
+                              onPressed: isLoading ? null : loginWithGoogle,
                               icon: Image.asset(
                                 'assets/ic_google_logo.png',
                                 height: 24,
@@ -314,11 +354,10 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                  BorderRadius.circular(28),
+                                  borderRadius: BorderRadius.circular(28),
                                 ),
                                 side: const BorderSide(
                                   color: Color(0xFFE0E0E0),
@@ -328,21 +367,19 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 16),
-
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
                                 "Don't have an account? ",
                                 style: TextStyle(
-                                    color: Color(0xFF5E176A)),
+                                  color: Color(0xFF5E176A),
+                                ),
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pushNamed(
-                                      context, '/register');
+                                  Navigator.pushNamed(context, '/register');
                                 },
                                 child: const Text(
                                   'Register',
@@ -354,13 +391,13 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 8),
-
                           GestureDetector(
                             onTap: () {
                               Navigator.pushNamed(
-                                  context, '/forgot_password');
+                                context,
+                                '/forgot_password',
+                              );
                             },
                             child: const Text(
                               'Forgot Password?',
