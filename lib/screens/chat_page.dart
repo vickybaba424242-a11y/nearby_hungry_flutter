@@ -156,9 +156,9 @@ class _ChatPageState extends State<ChatPage> {
         elevation: 0,
         automaticallyImplyLeading: true,
         title: Text(
-          widget.chefName?.trim().isNotEmpty == true
+          (widget.chefName != null && widget.chefName!.trim().isNotEmpty)
               ? widget.chefName!
-              : 'Chat',
+              : "User",
         ),
         actions: [
           IconButton(

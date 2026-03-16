@@ -190,12 +190,24 @@ class _InboxTile extends StatelessWidget {
     return FutureBuilder<DocumentSnapshot>(
       future: firestore.collection('users').doc(otherUserId).get(),
       builder: (context, snap) {
-        String name = 'User';
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const ListTile(
+            leading: CircleAvatar(child: Icon(Icons.person)),
+            title: Text("Loading..."),
+          );
+        }
+
+        String name = "User";
         String? image;
 
         if (snap.hasData && snap.data!.exists) {
           final data = snap.data!.data() as Map<String, dynamic>;
-          name = data['username'] ?? 'User';
+          name = (data['username'] ?? '').toString().trim();
+
+          if (name.isEmpty) {
+            name = "User";
+          }
+
           image = data['profileImage'];
         }
 

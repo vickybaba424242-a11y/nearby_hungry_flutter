@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'firebase_options.dart';
 
@@ -14,7 +15,7 @@ import 'screens/forgot_password.dart';
 import 'screens/chat_page.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+FlutterLocalNotificationsPlugin();
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -30,6 +31,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
   debugPrint("📩 Background message: ${message.messageId}");
   debugPrint("📩 Background data: ${message.data}");
 }
@@ -42,10 +44,7 @@ void handleNotificationClickFromData(Map<String, dynamic> data) {
     final customerId = data['customerId'];
     final chefName = data['chefName'];
 
-    if (chefId == null || customerId == null) {
-      debugPrint("❌ Missing chefId or customerId in notification data: $data");
-      return;
-    }
+    if (chefId == null || customerId == null) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       navigatorKey.currentState?.pushNamed(
@@ -69,18 +68,9 @@ Future<void> main() async {
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
+  await _initNotifications();
+
   runApp(const MyApp());
-
-  _initNotificationsSafely();
-}
-
-Future<void> _initNotificationsSafely() async {
-  try {
-    await _initNotifications();
-  } catch (e, st) {
-    debugPrint("❌ Notification init failed: $e");
-    debugPrintStack(stackTrace: st);
-  }
 }
 
 Future<void> _initNotifications() async {
@@ -91,48 +81,46 @@ Future<void> _initNotifications() async {
     badge: true,
     sound: true,
   );
+
   debugPrint("🔔 Permission status: ${settings.authorizationStatus}");
 
-  // Prevent duplicate foreground notifications on iOS.
-  // We'll show our own local notification in onMessage.
   await messaging.setForegroundNotificationPresentationOptions(
-    alert: false,
-    badge: false,
-    sound: false,
+    alert: true,
+    badge: true,
+    sound: true,
   );
 
-  String? apnsToken;
   try {
-    apnsToken = await messaging.getAPNSToken();
-    int retry = 0;
+    String? token = await messaging.getToken();
+    debugPrint("🔑 Device FCM Token: $token");
 
-    while (apnsToken == null && retry < 3) {
-      await Future.delayed(const Duration(milliseconds: 800));
-      apnsToken = await messaging.getAPNSToken();
-      retry++;
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null && token != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set({'fcmToken': token}, SetOptions(merge: true));
     }
 
-    debugPrint("🍎 APNS Token: $apnsToken");
-  } catch (e, st) {
-    debugPrint("❌ Failed to get APNS token: $e");
-    debugPrintStack(stackTrace: st);
-  }
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      debugPrint("♻️ FCM token refreshed: $newToken");
 
-  String? token;
-  try {
-    if (apnsToken != null) {
-      token = await messaging.getToken();
-      debugPrint("🔑 Device FCM Token: $token");
-    } else {
-      debugPrint("⚠️ APNS token not available yet, skipping FCM token fetch");
-    }
-  } catch (e, st) {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .set({'fcmToken': newToken}, SetOptions(merge: true));
+      }
+    });
+  } catch (e) {
     debugPrint("❌ Failed to get FCM token: $e");
-    debugPrintStack(stackTrace: st);
   }
 
   const AndroidInitializationSettings androidInit =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+  AndroidInitializationSettings('@mipmap/ic_launcher');
 
   const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
     requestAlertPermission: true,
@@ -148,8 +136,7 @@ Future<void> _initNotifications() async {
   await flutterLocalNotificationsPlugin.initialize(
     initSettings,
     onDidReceiveNotificationResponse: (details) {
-      debugPrint("🔔 Local notification tapped");
-      debugPrint("🔔 Local notification payload: ${details.payload}");
+      debugPrint("🔔 Notification tapped");
 
       if (details.payload != null && details.payload!.isNotEmpty) {
         final data = jsonDecode(details.payload!);
@@ -160,23 +147,29 @@ Future<void> _initNotifications() async {
 
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
+      AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-    debugPrint("📩 Foreground notification received");
-    debugPrint("📩 Foreground messageId: ${message.messageId}");
-    debugPrint("📩 Foreground title: ${message.notification?.title}");
-    debugPrint("📩 Foreground body: ${message.notification?.body}");
-    debugPrint("📩 Foreground data: ${message.data}");
+    debugPrint("📩 Foreground message received");
+    debugPrint("📩 Data: ${message.data}");
 
-    final notification = message.notification;
-    if (notification == null) return;
+    final title =
+        message.data['chefName'] ??
+            message.data['title'] ??
+            message.notification?.title ??
+            "Nearby Hungry";
+
+    final body =
+        message.data['message'] ??
+            message.data['body'] ??
+            message.notification?.body ??
+            "New message";
 
     await flutterLocalNotificationsPlugin.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      body,
       NotificationDetails(
         android: AndroidNotificationDetails(
           channel.id,
@@ -184,6 +177,7 @@ Future<void> _initNotifications() async {
           channelDescription: channel.description,
           importance: Importance.max,
           priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
@@ -196,22 +190,17 @@ Future<void> _initNotifications() async {
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    debugPrint("📲 Notification opened app from background");
-    debugPrint("📲 Opened message data: ${message.data}");
+    debugPrint("📲 Notification opened from background");
     handleNotificationClickFromData(message.data);
   });
 
   final RemoteMessage? initialMessage =
-      await FirebaseMessaging.instance.getInitialMessage();
+  await FirebaseMessaging.instance.getInitialMessage();
+
   if (initialMessage != null) {
-    debugPrint("🚀 App opened from terminated state via notification");
-    debugPrint("🚀 Initial message data: ${initialMessage.data}");
+    debugPrint("🚀 App opened from terminated state");
     handleNotificationClickFromData(initialMessage.data);
   }
-
-  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-    debugPrint("♻️ FCM token refreshed: $newToken");
-  });
 }
 
 class MyApp extends StatelessWidget {
@@ -223,10 +212,8 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       title: 'Nearby Hungry',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-      ),
-      home: const LoginPage(),
+      theme: ThemeData(primarySwatch: Colors.deepPurple),
+      home: const AuthWrapper(),
       routes: {
         '/login': (_) => const LoginPage(),
         '/home': (_) => const HomePage(),
@@ -236,6 +223,7 @@ class MyApp extends StatelessWidget {
       onGenerateRoute: (settings) {
         if (settings.name == '/chat') {
           final args = settings.arguments as Map<String, dynamic>;
+
           return MaterialPageRoute(
             builder: (_) => ChatPage(
               chefId: args['chefId'],
@@ -258,16 +246,20 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+
+        // Wait until Firebase restores the session
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        if (snapshot.hasData) {
+        // If user exists → go to Home
+        if (snapshot.hasData && snapshot.data != null) {
           return const HomePage();
         }
 
+        // Otherwise → Login
         return const LoginPage();
       },
     );
