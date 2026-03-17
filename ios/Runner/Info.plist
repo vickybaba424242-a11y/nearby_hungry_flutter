@@ -73,10 +73,6 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Nearby Hungry needs your location to find food near you.</string>
 
-	<!-- Tracking permission -->
-	<key>NSUserTrackingUsageDescription</key>
-	<string>This helps us improve the app experience.</string>
-
 	<!-- Google Sign In -->
 <key>CFBundleURLTypes</key>
 <array>
