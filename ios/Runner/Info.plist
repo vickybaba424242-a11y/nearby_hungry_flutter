@@ -67,8 +67,6 @@
 	<false/>
 
 	<!-- Location permissions -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Nearby Hungry needs your location to find food near you.</string>
 
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Nearby Hungry needs your location to find food near you.</string>

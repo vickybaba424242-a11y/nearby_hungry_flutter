@@ -99,6 +99,14 @@ class Sidebar extends StatelessWidget {
                     context,
                   ),
                   _buildMenuTile('Share App', Icons.share, 'share', context),
+
+                  _buildMenuTile(
+                    'Privacy Policy',
+                    Icons.privacy_tip,
+                    'privacy',
+                    context,
+                  ),
+
                   _buildMenuTile('Logout', Icons.logout, 'logout', context),
                 ],
               ),
@@ -156,6 +164,20 @@ class Sidebar extends StatelessWidget {
             mode: LaunchMode.externalApplication,
           )) {
             debugPrint('Could not open Instagram');
+          }
+          return;
+        }
+
+        if (key == 'privacy') {
+          final Uri url = Uri.parse(
+            'https://vickybaba424242-a11y.github.io/nearby-hungry/privacy.html',
+          );
+
+          if (!await launchUrl(
+            url,
+            mode: LaunchMode.externalApplication,
+          )) {
+            debugPrint('Could not open Privacy Policy');
           }
           return;
         }
