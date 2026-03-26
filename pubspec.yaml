@@ -31,6 +31,8 @@ dependencies:
   # Google Sign-In
   google_sign_in: ^6.1.5
 
+  sign_in_with_apple: ^6.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

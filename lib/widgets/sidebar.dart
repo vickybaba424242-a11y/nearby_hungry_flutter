@@ -106,6 +106,7 @@ class Sidebar extends StatelessWidget {
                     'privacy',
                     context,
                   ),
+                  _buildDeleteTile(context),
 
                   _buildMenuTile('Logout', Icons.logout, 'logout', context),
                 ],
@@ -184,6 +185,53 @@ class Sidebar extends StatelessWidget {
 
         onMenuTap(key);
       },
+    );
+  }
+
+  Widget _buildDeleteTile(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.delete, color: Colors.red),
+      title: const Text(
+        'Delete Account',
+        style: TextStyle(
+          color: Colors.red,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      onTap: () {
+        Navigator.pop(context);
+        _showDeleteDialog(context);
+      },
+    );
+  }
+
+// 🔥 ADD THIS ALSO
+
+  void _showDeleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Account"),
+        content: const Text(
+          "Are you sure you want to permanently delete your account? This action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onMenuTap('delete_account'); // 🔥 IMPORTANT
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

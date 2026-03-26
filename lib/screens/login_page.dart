@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import '../services/apple_auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -336,6 +339,39 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 24),
+                          if (Platform.isIOS) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: isLoading ? null : loginWithApple,
+                                icon: const Icon(
+                                  Icons.apple,
+                                  color: Color(0xFF3C4043),
+                                  size: 24,
+                                ),
+                                label: const Text(
+                                  'Continue with Apple',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF3C4043),
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(28),
+                                  ),
+                                  side: const BorderSide(
+                                    color: Color(0xFFE0E0E0),
+                                    width: 1,
+                                  ),
+                                  backgroundColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
@@ -367,7 +403,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 24),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -418,5 +454,33 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     );
+  }
+  Future<void> loginWithApple() async {
+    setState(() => isLoading = true);
+
+    try {
+      final userCredential = await AppleAuthService.signInWithApple();
+
+      if (userCredential != null && userCredential.user != null) {
+        await _saveFcmToken();
+
+        if (!mounted) return;
+
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/home',
+              (route) => false,
+        );
+      } else {
+        if (mounted) showSnack("Apple Sign-In cancelled");
+      }
+    } catch (e) {
+      debugPrint("❌ APPLE LOGIN ERROR: $e");
+
+      if (mounted) {
+        showSnack("Apple Sign-In failed");
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 }
