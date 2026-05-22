@@ -23,6 +23,7 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+<<<<<<< HEAD
 
   final TextEditingController _controller =
   TextEditingController();
@@ -39,21 +40,36 @@ class _ChatPageState extends State<ChatPage> {
 
   late final String currentUserId;
 
+=======
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  final Color homeBg = const Color(0xFFFFE0B2);
+
+  late final String currentUserId;
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
   late final String chatId;
 
   StreamSubscription<DocumentSnapshot>? _hiddenSub;
 
   final List<String> _recentUserMessages = [];
+<<<<<<< HEAD
 
+=======
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
   static const int _maxTrackedMessages = 10;
 
   @override
   void initState() {
     super.initState();
 
+<<<<<<< HEAD
     final user =
         FirebaseAuth.instance.currentUser;
 
+=======
+    final user = FirebaseAuth.instance.currentUser;
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
     if (user == null) {
       throw Exception('User not logged in');
     }
@@ -62,6 +78,7 @@ class _ChatPageState extends State<ChatPage> {
 
     final a = widget.chefId;
     final b = widget.customerId;
+<<<<<<< HEAD
 
     chatId =
     a.compareTo(b) < 0
@@ -70,17 +87,27 @@ class _ChatPageState extends State<ChatPage> {
 
     _markAsRead();
 
+=======
+    chatId = a.compareTo(b) < 0 ? '${a}_$b' : '${b}_$a';
+
+    _markAsRead();
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
     _listenHiddenChat();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+<<<<<<< HEAD
 
     _scrollController.dispose();
 
     _hiddenSub?.cancel();
 
+=======
+    _scrollController.dispose();
+    _hiddenSub?.cancel();
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
     super.dispose();
   }
 
@@ -92,6 +119,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _listenHiddenChat() {
+<<<<<<< HEAD
     _hiddenSub =
         _db
             .collection('chats')
@@ -111,10 +139,23 @@ class _ChatPageState extends State<ChatPage> {
             }
           }
         });
+=======
+    _hiddenSub = _db.collection('chats').doc(chatId).snapshots().listen((doc) {
+      if (!doc.exists) return;
+
+      final data = doc.data();
+      final hiddenFor = data?['hiddenFor'];
+
+      if (hiddenFor is List && hiddenFor.contains(currentUserId)) {
+        if (mounted) Navigator.of(context).pop();
+      }
+    });
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
   }
 
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
+<<<<<<< HEAD
 
     if (text.isEmpty) return;
 
@@ -132,10 +173,23 @@ class _ChatPageState extends State<ChatPage> {
     final isMultiBlocked =
     PhoneNumberFilter
         .containsPhoneNumberAcrossMessages(
+=======
+    if (text.isEmpty) return;
+
+    _recentUserMessages.add(text);
+    if (_recentUserMessages.length > _maxTrackedMessages) {
+      _recentUserMessages.removeAt(0);
+    }
+
+    final isSingleBlocked = PhoneNumberFilter.containsPhoneNumber(text);
+    final isMultiBlocked =
+    PhoneNumberFilter.containsPhoneNumberAcrossMessages(
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
         _recentUserMessages);
 
     if (isSingleBlocked || isMultiBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
+<<<<<<< HEAD
         const SnackBar(
           content: Text(
             'Sharing phone numbers is not allowed.',
@@ -145,21 +199,31 @@ class _ChatPageState extends State<ChatPage> {
 
       _recentUserMessages.clear();
 
+=======
+        const SnackBar(content: Text('Sharing phone numbers is not allowed.')),
+      );
+      _recentUserMessages.clear();
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
       return;
     }
 
     _controller.clear();
 
     final otherUserId =
+<<<<<<< HEAD
     currentUserId == widget.chefId
         ? widget.customerId
         : widget.chefId;
+=======
+    currentUserId == widget.chefId ? widget.customerId : widget.chefId;
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
 
     final msg = {
       'senderId': currentUserId,
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
       'seen': false,
+<<<<<<< HEAD
 
       // reply feature
       'replyText':
@@ -167,10 +231,13 @@ class _ChatPageState extends State<ChatPage> {
 
       'replySenderId':
       replyingToMessage?['senderId'],
+=======
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
     };
 
     final updates = {
       'chefId': widget.chefId,
+<<<<<<< HEAD
 
       'customerId': widget.customerId,
 
@@ -192,6 +259,14 @@ class _ChatPageState extends State<ChatPage> {
       'unreadCount_$otherUserId':
       FieldValue.increment(1),
 
+=======
+      'customerId': widget.customerId,
+      'participants': [widget.chefId, widget.customerId],
+      'lastMessage': text,
+      'lastMessageTime': FieldValue.serverTimestamp(),
+      'hiddenFor': FieldValue.arrayRemove([currentUserId]),
+      'unreadCount_$otherUserId': FieldValue.increment(1),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
       'unreadCount_$currentUserId': 0,
     };
 
@@ -205,6 +280,7 @@ class _ChatPageState extends State<ChatPage> {
         .doc(chatId)
         .collection('messages')
         .add(msg);
+<<<<<<< HEAD
 
     setState(() {
       replyingToMessage = null;
@@ -225,22 +301,30 @@ class _ChatPageState extends State<ChatPage> {
         }
       },
     );
+=======
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
   }
 
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
+<<<<<<< HEAD
         statusBarColor:
         Color(0xFFFFE0B2),
 
         statusBarIconBrightness:
         Brightness.dark,
+=======
+        statusBarColor: Color(0xFFFFE0B2),
+        statusBarIconBrightness: Brightness.dark,
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
       ),
     );
 
     return Scaffold(
       backgroundColor: homeBg,
+<<<<<<< HEAD
 
       appBar: AppBar(
         backgroundColor: homeBg,
@@ -287,16 +371,36 @@ class _ChatPageState extends State<ChatPage> {
                   .popUntil(
                     (route) => route.isFirst,
               );
+=======
+      appBar: AppBar(
+        backgroundColor: homeBg,
+        elevation: 0,
+        automaticallyImplyLeading: true,
+        title: Text(
+          (widget.chefName != null && widget.chefName!.trim().isNotEmpty)
+              ? widget.chefName!
+              : "User",
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
             },
           ),
         ],
       ),
+<<<<<<< HEAD
 
+=======
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
       body: Stack(
         children: [
           Positioned.fill(
             child: Image.asset(
               'assets/chat_background.jpg',
+<<<<<<< HEAD
 
               fit: BoxFit.cover,
             ),
@@ -308,6 +412,14 @@ class _ChatPageState extends State<ChatPage> {
                 child: _buildMessages(),
               ),
 
+=======
+              fit: BoxFit.cover,
+            ),
+          ),
+          Column(
+            children: [
+              Expanded(child: _buildMessages()),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
               _buildInput(),
             ],
           ),
@@ -322,6 +434,7 @@ class _ChatPageState extends State<ChatPage> {
           .collection('chats')
           .doc(chatId)
           .collection('messages')
+<<<<<<< HEAD
           .orderBy(
         'timestamp',
         descending: true,
@@ -338,11 +451,23 @@ class _ChatPageState extends State<ChatPage> {
           return const Center(
             child: CircularProgressIndicator(),
           );
+=======
+          .orderBy('timestamp', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Center(child: Text('Unable to load messages'));
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
         }
 
         final docs = snapshot.data!.docs;
 
         if (docs.isEmpty) {
+<<<<<<< HEAD
           return const Center(
             child: Text('No messages yet'),
           );
@@ -459,6 +584,33 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                 );
               },
+=======
+          return const Center(child: Text('No messages yet'));
+        }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(
+              _scrollController.position.minScrollExtent,
+            );
+          }
+        });
+
+        return ListView.builder(
+          controller: _scrollController,
+          reverse: true,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final isMe = data['senderId'] == currentUserId;
+
+            return MessageBubble(
+              text: data['text'] ?? '',
+              isMe: isMe,
+              timestamp: data['timestamp'],
+              seen: data['seen'] == true,
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
             );
           },
         );
@@ -470,6 +622,7 @@ class _ChatPageState extends State<ChatPage> {
     return SafeArea(
       child: Container(
         color: homeBg,
+<<<<<<< HEAD
 
         padding:
         const EdgeInsets.symmetric(
@@ -618,6 +771,40 @@ class _ChatPageState extends State<ChatPage> {
                 )
               ],
             ),
+=======
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                keyboardType: TextInputType.multiline,
+                minLines: 1,
+                maxLines: 5,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 15,
+                ),
+                cursorColor: Colors.black,
+                decoration: InputDecoration(
+                  hintText: 'Type a message',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            IconButton(
+              icon: const Icon(Icons.send),
+              onPressed: _sendMessage,
+            )
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
           ],
         ),
       ),
@@ -627,6 +814,7 @@ class _ChatPageState extends State<ChatPage> {
 
 class MessageBubble extends StatelessWidget {
   final String text;
+<<<<<<< HEAD
 
   final String? replyText;
 
@@ -634,6 +822,10 @@ class MessageBubble extends StatelessWidget {
 
   final dynamic timestamp;
 
+=======
+  final bool isMe;
+  final dynamic timestamp;
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
   final bool seen;
 
   const MessageBubble({
@@ -642,12 +834,16 @@ class MessageBubble extends StatelessWidget {
     required this.isMe,
     required this.timestamp,
     required this.seen,
+<<<<<<< HEAD
     this.replyText,
+=======
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
   });
 
   @override
   Widget build(BuildContext context) {
     return Align(
+<<<<<<< HEAD
       alignment:
       isMe
           ? Alignment.centerRight
@@ -751,6 +947,37 @@ class MessageBubble extends StatelessWidget {
                         ? Colors.blue
                         : Colors.grey,
                   ),
+=======
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.all(10),
+        constraints: const BoxConstraints(maxWidth: 280),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.green[100] : Colors.grey[200],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment:
+          isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Text(text),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatSmartDateTime(timestamp),
+                  style: const TextStyle(fontSize: 10, color: Colors.black54),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    seen ? '✓✓' : '✓',
+                    style:
+                    const TextStyle(fontSize: 10, color: Colors.green),
+                  )
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                 ]
               ],
             )
@@ -760,6 +987,7 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+<<<<<<< HEAD
   String _formatSmartDateTime(
       dynamic ts) {
     if (ts == null) return '';
@@ -787,6 +1015,24 @@ class MessageBubble extends StatelessWidget {
 
     final time =
     _formatTimeOnly(dt);
+=======
+  String _formatSmartDateTime(dynamic ts) {
+    if (ts == null) return '';
+
+    final DateTime dt = (ts as Timestamp).toDate();
+    final now = DateTime.now();
+
+    final bool isSameDay =
+        now.year == dt.year && now.month == dt.month && now.day == dt.day;
+
+    final yesterday = now.subtract(const Duration(days: 1));
+    final bool isYesterday =
+        yesterday.year == dt.year &&
+            yesterday.month == dt.month &&
+            yesterday.day == dt.day;
+
+    final time = _formatTimeOnly(dt);
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
 
     if (isSameDay) {
       return 'Today • $time';
@@ -799,6 +1045,7 @@ class MessageBubble extends StatelessWidget {
 
   String _formatTimeOnly(DateTime dt) {
     int hour = dt.hour % 12;
+<<<<<<< HEAD
 
     if (hour == 0) hour = 12;
 
@@ -809,12 +1056,19 @@ class MessageBubble extends StatelessWidget {
 
     final ampm =
     dt.hour >= 12 ? 'PM' : 'AM';
+=======
+    if (hour == 0) hour = 12;
+
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
 
     return '$hour:$minute $ampm';
   }
 
   String _monthName(int m) {
     const months = [
+<<<<<<< HEAD
       'Jan',
       'Feb',
       'Mar',
@@ -829,12 +1083,18 @@ class MessageBubble extends StatelessWidget {
       'Dec'
     ];
 
+=======
+      'Jan','Feb','Mar','Apr','May','Jun',
+      'Jul','Aug','Sep','Oct','Nov','Dec'
+    ];
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
     return months[m - 1];
   }
 }
 
 class PhoneNumberFilter {
   static final RegExp _phoneRegex =
+<<<<<<< HEAD
   RegExp(
     r'(\+?\d[\d\s\-]{7,}\d)',
   );
@@ -855,3 +1115,16 @@ class PhoneNumberFilter {
         combined);
   }
 }
+=======
+  RegExp(r'(\+?\d[\d\s\-]{7,}\d)');
+
+  static bool containsPhoneNumber(String text) {
+    return _phoneRegex.hasMatch(text);
+  }
+
+  static bool containsPhoneNumberAcrossMessages(List<String> messages) {
+    final combined = messages.join(' ');
+    return _phoneRegex.hasMatch(combined);
+  }
+}
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f

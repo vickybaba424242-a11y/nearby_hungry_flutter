@@ -29,7 +29,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
   String creatorName = '';
   String creatorId = '';
   String content = '';
+<<<<<<< HEAD
 
+=======
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
   Timestamp? timestamp;
 
   double? postLat;
@@ -41,6 +44,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   @override
   void initState() {
     super.initState();
+<<<<<<< HEAD
 
     print("INIT STATE CALLED");
 
@@ -124,6 +128,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
     try {
       final doc =
       await _firestore.collection('posts').doc(widget.postId).get();
+=======
+    _loadPost();
+  }
+
+  Future<void> _loadPost() async {
+    try {
+      final doc = await _firestore.collection('posts').doc(widget.postId).get();
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
 
       if (!doc.exists) {
         _showNotFound();
@@ -132,14 +144,19 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
       final data = doc.data();
 
+<<<<<<< HEAD
       final rawText =
           data?['text'] ?? data?['description'] ?? data?['content'];
+=======
+      final rawText = data?['text'] ?? data?['description'] ?? data?['content'];
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
 
       final myId = _auth.currentUser?.uid;
       final creator = data?['creatorId'];
 
       setState(() {
         creatorId = creator ?? '';
+<<<<<<< HEAD
 
         creatorName =
             (data?['creatorName'] ?? 'Nearby User').toString();
@@ -147,6 +164,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
         content =
         rawText == null ? '' : rawText.toString().trim();
 
+=======
+        creatorName = (data?['creatorName'] ?? 'Nearby User').toString();
+        content = rawText == null ? '' : rawText.toString().trim();
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
         timestamp = data?['timestamp'];
 
         postLat = (data?['latitude'] as num?)?.toDouble();
@@ -160,16 +181,24 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
       await _fetchMyLocation();
     } catch (e) {
+<<<<<<< HEAD
       print("LOAD POST ERROR: $e");
+=======
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
       _showNotFound();
     }
   }
 
+<<<<<<< HEAD
   // ================= NOT FOUND =================
 
   void _showNotFound() {
     if (!mounted) return;
 
+=======
+  void _showNotFound() {
+    if (!mounted) return;
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
     setState(() {
       loading = false;
       creatorName = 'Post not found';
@@ -177,6 +206,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     });
   }
 
+<<<<<<< HEAD
   // ================= LOCATION =================
 
   Future<void> _fetchMyLocation() async {
@@ -231,6 +261,39 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
     if (creatorId.isEmpty) return;
 
+=======
+  Future<void> _fetchMyLocation() async {
+    if (!await Geolocator.isLocationServiceEnabled()) return;
+
+    var permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) return;
+
+    final pos = await Geolocator.getCurrentPosition();
+
+    if (!mounted) return;
+
+    setState(() {
+      myLat = pos.latitude;
+      myLng = pos.longitude;
+    });
+  }
+
+  double _distanceInKm(double lat1, double lng1, double lat2, double lng2) {
+    return Geolocator.distanceBetween(lat1, lng1, lat2, lng2) / 1000.0;
+  }
+
+  // ---------------- Chat (FIXED) ----------------
+  Future<void> _openChat() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    if (creatorId.isEmpty) return;
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
     if (creatorId == user.uid) return;
 
     Navigator.push(
@@ -245,6 +308,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     );
   }
 
+<<<<<<< HEAD
   // ================= TIME FORMAT =================
 
   String _formatTime(Timestamp? t) {
@@ -252,6 +316,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
     final d = t.toDate();
 
+=======
+  String _formatTime(Timestamp? t) {
+    if (t == null) return '';
+    final d = t.toDate();
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
     return "${d.day.toString().padLeft(2, '0')}-"
         "${d.month.toString().padLeft(2, '0')}-"
         "${d.year} "
@@ -259,8 +328,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
         "${d.minute.toString().padLeft(2, '0')}";
   }
 
+<<<<<<< HEAD
   // ================= UI =================
 
+=======
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -283,13 +355,18 @@ class _PostDetailPageState extends State<PostDetailPage> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+<<<<<<< HEAD
                 crossAxisAlignment:
                 CrossAxisAlignment.start,
+=======
+                crossAxisAlignment: CrossAxisAlignment.start,
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                 children: [
                   Center(
                     child: Container(
                       width: 40,
                       height: 4,
+<<<<<<< HEAD
                       margin:
                       const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
@@ -301,6 +378,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   ),
 
                   // Creator Name
+=======
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                   Text(
                     creatorName,
                     style: const TextStyle(
@@ -308,12 +394,18 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+<<<<<<< HEAD
 
                   // Time
                   if (timestamp != null)
                     Padding(
                       padding:
                       const EdgeInsets.only(top: 2),
+=======
+                  if (timestamp != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                       child: Text(
                         _formatTime(timestamp),
                         style: const TextStyle(
@@ -322,10 +414,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         ),
                       ),
                     ),
+<<<<<<< HEAD
 
                   const SizedBox(height: 10),
 
                   // Content
+=======
+                  const SizedBox(height: 10),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                   Text(
                     content,
                     softWrap: true,
@@ -334,16 +430,21 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       color: Colors.black,
                     ),
                   ),
+<<<<<<< HEAD
 
                   const SizedBox(height: 16),
 
                   // Buttons
+=======
+                  const SizedBox(height: 16),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                   Row(
                     children: [
                       if (!isOwnPost)
                         Expanded(
                           child: ElevatedButton(
                             onPressed: _openChat,
+<<<<<<< HEAD
                             style:
                             ElevatedButton.styleFrom(
                               backgroundColor:
@@ -382,23 +483,56 @@ class _PostDetailPageState extends State<PostDetailPage> {
                             Colors.white,
                             shape:
                             RoundedRectangleBorder(
+=======
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                              const Color(0xFF4CAF50),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(12),
+                              ),
+                              padding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text('Chat with Chef'),
+                          ),
+                        ),
+                      if (!isOwnPost) const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                            const Color(0xFFFF7B00),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                               borderRadius:
                               BorderRadius.circular(12),
                             ),
                             padding:
+<<<<<<< HEAD
                             const EdgeInsets.symmetric(
                               vertical: 14,
                             ),
+=======
+                            const EdgeInsets.symmetric(vertical: 14),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                           ),
                           child: const Text('Close'),
                         ),
                       ),
                     ],
                   ),
+<<<<<<< HEAD
 
                   const SizedBox(height: 12),
 
                   // Distance
+=======
+                  const SizedBox(height: 12),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                   Text(
                     (postLat != null &&
                         postLng != null &&
@@ -412,10 +546,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       color: Colors.grey,
                     ),
                   ),
+<<<<<<< HEAD
 
                   const SizedBox(height: 10),
 
                   // Disclaimer
+=======
+                  const SizedBox(height: 10),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
                   const Text(
                     "⚠️ Disclaimer: Food is prepared and sold by independent chefs. Nearby Hungry does not sell or deliver food. All food safety compliance is the responsibility of the chef.",
                     style: TextStyle(
@@ -431,4 +569,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
       ),
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f

@@ -142,7 +142,11 @@ class PostCard extends StatelessWidget {
                   backgroundColor: const Color(0xFFFF7B00),
                   foregroundColor: Colors.white,
                 ),
+<<<<<<< HEAD
                 child: const Text("See full menu here 🍴"),
+=======
+                child: const Text("View"),
+>>>>>>> 06de8d42fc3ced6379cdde15cb634160a30df99f
               ),
             ),
           ],
