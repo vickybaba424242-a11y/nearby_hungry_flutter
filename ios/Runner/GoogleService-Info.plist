@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>831632114120-hsqfmsjh7inl1jnuqrju4tuuf5t4e1ni.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.831632114120-hsqfmsjh7inl1jnuqrju4tuuf5t4e1ni</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>831632114120-81j3qpv7175jeeu4mjqte4ccfhpmcsld.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCUVgzmUREaOZn7MRdqL2Ke-5F3zJIJo7M</string>
+	<key>GCM_SENDER_ID</key>
+	<string>831632114120</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.vishal.nearbyhungry</string>
+	<key>PROJECT_ID</key>
+	<string>nearbyhungry-6a1ab</string>
+	<key>STORAGE_BUCKET</key>
+	<string>nearbyhungry-6a1ab.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:831632114120:ios:61b947a283ffdfa45e00fd</string>
+</dict>
+</plist>

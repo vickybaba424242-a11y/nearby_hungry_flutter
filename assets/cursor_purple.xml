@@ -1,0 +1,4 @@
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <size android:width="2dp"/> <!-- Cursor width -->
+    <solid android:color="#5e176a"/> <!-- Matches your button color -->
+</shape>

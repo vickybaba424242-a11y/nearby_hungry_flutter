@@ -1,0 +1,21 @@
+workflows:
+  ios-release:
+    name: iOS Release Build
+    environment:
+      flutter: stable
+      xcode: latest
+    scripts:
+      - name: Clean Flutter
+        script: flutter clean
+
+      - name: Get dependencies
+        script: flutter pub get
+
+      - name: Clean iOS cache
+        script: |
+          cd ios
+          rm -rf Pods Podfile.lock
+          rm -rf ~/Library/Developer/Xcode/DerivedData
+
+      - name: Build IPA
+        script: flutter build ipa --release
