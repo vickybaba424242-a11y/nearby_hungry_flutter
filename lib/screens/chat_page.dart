@@ -148,10 +148,16 @@ class _ChatPageState extends State<ChatPage> {
       await showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Policy Violation'),
+          title: const Text('Message Not Sent'),
           content: const Text(
-            'Sharing phone numbers or personal contact information is not allowed.\n\n'
-                'Attempting to bypass the platform may result in permanent suspension of your account.',
+            'Your message appears to contain contact information or an attempt to share personal details.\n\n'
+                'To keep everyone safe, Nearby Hungry does not allow sharing:\n'
+                '• Phone numbers\n'
+                '• Email addresses\n'
+                '• WhatsApp, Telegram or social media IDs\n'
+                '• Other personal contact details\n\n'
+                'Menu items, prices, and food details are allowed.\n\n'
+                'Please remove any contact information and try again.',
           ),
           actions: [
             TextButton(
@@ -952,12 +958,14 @@ class PhoneNumberFilter {
     ).hasMatch(text)) {
       return true;
     }
-
+seven
     // Digits only
-    final digits = text.replaceAll(RegExp(r'\D'), '');
+    // Detect real Indian phone numbers
+    final phoneRegex = RegExp(
+      r'(?<!\d)(?:\+91[\s-]?)?[6-9](?:[\s-]?\d){9}(?!\d)',
+    );
 
-    // 8+ digits usually means phone/contact
-    if (digits.length >= 8) {
+    if (phoneRegex.hasMatch(text)) {
       return true;
     }
 
@@ -1007,13 +1015,6 @@ class PhoneNumberFilter {
       List<String> messages,
       ) {
     final combined = messages.join(' ').toLowerCase();
-
-    final digits =
-    combined.replaceAll(RegExp(r'\D'), '');
-
-    if (digits.length >= 8) {
-      return true;
-    }
 
     return containsPhoneNumber(combined);
   }
