@@ -958,11 +958,11 @@ class PhoneNumberFilter {
     ).hasMatch(text)) {
       return true;
     }
-seven
+
     // Digits only
     // Detect real Indian phone numbers
     final phoneRegex = RegExp(
-      r'(?<!\d)(?:\+91[\s-]?)?[6-9](?:[\s-]?\d){9}(?!\d)',
+      r'(?<!\d)(?:\+91[- ]?)?[6-9]\d{9}(?!\d)',
     );
 
     if (phoneRegex.hasMatch(text)) {
