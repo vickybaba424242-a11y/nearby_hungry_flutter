@@ -5,6 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../active_chat.dart';
+import '../chat/services/location_service.dart';
+import '../chat/widgets/location_bubble.dart';
+import '../chat/payment/payment_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatPage extends StatefulWidget {
   final String chefId;
@@ -43,11 +47,64 @@ class _ChatPageState extends State<ChatPage> {
 
   late final String chatId;
 
+  static const String supportNumber = "918287746086";
+
+  bool get isCustomer => currentUserId == widget.customerId;
   StreamSubscription<DocumentSnapshot>? _hiddenSub;
 
   final List<String> _recentUserMessages = [];
 
   static const int _maxTrackedMessages = 10;
+
+  bool _showAttachmentMenu = false;
+
+  Future<void> _openSupportWhatsApp() async {
+    final Uri uri = Uri.parse(
+      "https://api.whatsapp.com/send?phone=$supportNumber&text=${Uri.encodeComponent("Hi Nearby Hungry Support, I want to place an order.")}",
+    );
+
+    try {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Unable to open WhatsApp."),
+        ),
+      );
+    }
+  }
+
+  Widget _buildAttachmentButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.grey.shade300,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: color),
+        onPressed: onTap,
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -251,6 +308,51 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  Future<void> _shareCurrentLocation() async {
+    final shouldShare = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Share Location"),
+        content: const Text(
+          "Do you want to share your current location with the other user?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Share"),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldShare != true) return;
+
+    final otherUserId =
+    currentUserId == widget.chefId
+        ? widget.customerId
+        : widget.chefId;
+
+    try {
+      await LocationService.shareLocation(
+        chatId: chatId,
+        currentUserId: currentUserId,
+        otherUserId: otherUserId,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
@@ -392,6 +494,13 @@ class _ChatPageState extends State<ChatPage> {
 
           Column(
             children: [
+
+              if (!widget.isAdmin)
+                if (isCustomer)
+                  _buildSupportMessage()
+                else
+                  _buildChefMessage(),
+
               Expanded(
                 child: _buildMessages(),
               ),
@@ -547,14 +656,28 @@ class _ChatPageState extends State<ChatPage> {
                             ),
                           ),
                         ),
-
-                        MessageBubble(
-                          text: data['text'] ?? '',
-                          replyText: data['replyText'],
-                          isMe: isMe,
-                          timestamp: data['timestamp'],
-                          seen: data['seen'] == true,
-                        ),
+                        if (data['type'] == 'location')
+                          LocationBubble(
+                            latitude: (data['latitude'] as num).toDouble(),
+                            longitude: (data['longitude'] as num).toDouble(),
+                            address: data['address'] ?? '',
+                            isMe: isMe,
+                            timestamp: data['timestamp'],
+                          )
+                        else if (data['type'] == 'image')
+                          ImageBubble(
+                            imageUrl: data['imageUrl'],
+                            isMe: isMe,
+                            timestamp: data['timestamp'],
+                          )
+                        else
+                          MessageBubble(
+                            text: data['text'] ?? '',
+                            replyText: data['replyText'],
+                            isMe: isMe,
+                            timestamp: data['timestamp'],
+                            seen: data['seen'] == true,
+                          ),
                       ],
                     ),
                   ),
@@ -564,6 +687,115 @@ class _ChatPageState extends State<ChatPage> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildSupportMessage() {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.orange.shade300,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.support_agent,
+                color: Colors.orange,
+              ),
+              SizedBox(width: 8),
+              Text(
+                "Nearby Hungry",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          const Text(
+            "If you want to place your order faster, contact the Nearby Hungry Team on WhatsApp.",
+            style: TextStyle(fontSize: 14),
+          ),
+
+          const SizedBox(height: 12),
+
+          InkWell(
+            onTap: _openSupportWhatsApp,
+            child: const Text(
+              "📱 +91 82877 46086",
+              style: TextStyle(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChefMessage() {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.green.shade300,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Row(
+            children: [
+              Icon(
+                Icons.restaurant,
+                color: Colors.green,
+              ),
+              SizedBox(width: 8),
+              Text(
+                "Important for Chefs",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 6),
+
+          Text(
+            "Before you start preparing the order:",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          SizedBox(height: 4),
+
+          Text(
+            "⚠️ Before preparing the order, ask the customer to complete the payment and share the payment screenshot.\n"
+                "Your payment will be released by Nearby Hungry after successful delivery.\n"
+                "Note: Payment and screenshot options are available only for customers.",
+            style: const TextStyle(fontSize: 11),
+          ),
+        ],
+      ),
     );
   }
 
@@ -602,6 +834,13 @@ class _ChatPageState extends State<ChatPage> {
 
                 child: Row(
                   children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.location_on,
+                        color: Colors.green,
+                      ),
+                      onPressed: _shareCurrentLocation,
+                    ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment:
@@ -656,53 +895,80 @@ class _ChatPageState extends State<ChatPage> {
               ),
 
             Row(
-              crossAxisAlignment:
-              CrossAxisAlignment.end,
-
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+
+                    // Payment button
+                    // Payment button (Customer only)
+                    if (_showAttachmentMenu && isCustomer)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _buildAttachmentButton(
+                          icon: Icons.payment,
+                          color: Colors.blue,
+                          onTap: () async {
+                            setState(() => _showAttachmentMenu = false);
+
+                            await PaymentService.openUPI(
+                              context,
+                              isCustomer: isCustomer,
+                              chatId: chatId,
+                              senderId: currentUserId,
+                            );
+                          },
+                        ),
+                      ),
+
+                    // Location button
+                    if (_showAttachmentMenu)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _buildAttachmentButton(
+                          icon: Icons.location_on,
+                          color: Colors.green,
+                          onTap: () {
+                            setState(() => _showAttachmentMenu = false);
+                            _shareCurrentLocation();
+                          },
+                        ),
+                      ),
+
+                    // Plus button
+                    _buildAttachmentButton(
+                      icon: _showAttachmentMenu ? Icons.close : Icons.add,
+                      color: Colors.orange,
+                      onTap: () {
+                        setState(() {
+                          _showAttachmentMenu = !_showAttachmentMenu;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+
                 Expanded(
                   child: TextField(
                     controller: _controller,
-
-                    keyboardType:
-                    TextInputType
-                        .multiline,
-
+                    keyboardType: TextInputType.multiline,
                     minLines: 1,
-
                     maxLines: 5,
-
                     style: const TextStyle(
                       color: Colors.black,
-
                       fontSize: 15,
                     ),
-
-                    cursorColor:
-                    Colors.black,
-
-                    decoration:
-                    InputDecoration(
-                      hintText:
-                      'Type a message',
-
+                    cursorColor: Colors.black,
+                    decoration: InputDecoration(
+                      hintText: 'Type a message',
                       filled: true,
-
-                      fillColor:
-                      Colors.white,
-
-                      border:
-                      OutlineInputBorder(
-                        borderRadius:
-                        BorderRadius
-                            .circular(
-                          24,
-                        ),
-
-                        borderSide:
-                        BorderSide.none,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
                       ),
-
                       isDense: true,
                     ),
                   ),
@@ -724,7 +990,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     onPressed: _sendMessage,
                   ),
-                )
+                ),
               ],
             ),
           ],
@@ -734,7 +1000,8 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
-class MessageBubble extends StatelessWidget {
+class MessageBubble extends StatelessWidget
+{
   final String text;
 
   final String? replyText;
@@ -948,6 +1215,75 @@ class MessageBubble extends StatelessWidget {
   }
 }
 
+class ImageBubble extends StatelessWidget {
+  final String imageUrl;
+  final bool isMe;
+  final dynamic timestamp;
+
+  const ImageBubble({
+    super.key,
+    required this.imageUrl,
+    required this.isMe,
+    required this.timestamp,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment:
+      isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 4,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FullImagePage(imageUrl: imageUrl),
+                ),
+              );
+            },
+            child: Image.network(
+              imageUrl,
+              width: 220,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FullImagePage extends StatelessWidget {
+  final String imageUrl;
+
+  const FullImagePage({
+    super.key,
+    required this.imageUrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.network(imageUrl),
+        ),
+      ),
+    );
+  }
+}
+
 class PhoneNumberFilter {
   static bool containsPhoneNumber(String text) {
     final lower = text.toLowerCase();
@@ -958,11 +1294,11 @@ class PhoneNumberFilter {
     ).hasMatch(text)) {
       return true;
     }
-seven
+
     // Digits only
     // Detect real Indian phone numbers
     final phoneRegex = RegExp(
-      r'(?<!\d)(?:\+91[\s-]?)?[6-9](?:[\s-]?\d){9}(?!\d)',
+      r'(?<!\d)(?:\+91[- ]?)?[6-9]\d{9}(?!\d)',
     );
 
     if (phoneRegex.hasMatch(text)) {

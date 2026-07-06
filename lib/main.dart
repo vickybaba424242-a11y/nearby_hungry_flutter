@@ -19,11 +19,22 @@ FlutterLocalNotificationsPlugin();
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-const AndroidNotificationChannel channel = AndroidNotificationChannel(
-  'high_importance_channel',
-  'High Importance Notifications',
-  description: 'Nearby Hungry notifications',
-  importance: Importance.high,
+const AndroidNotificationChannel chefChannel =
+AndroidNotificationChannel(
+  'chef_message_channel',
+  'Chef Messages',
+  description: 'Urgent notifications for chefs',
+  importance: Importance.max,
+  sound: RawResourceAndroidNotificationSound('new_order'),
+);
+
+const AndroidNotificationChannel customerChannel =
+AndroidNotificationChannel(
+  'customer_message_channel_v2',
+  'Customer Messages',
+  description: 'Customer notifications',
+  importance: Importance.max,
+  playSound: true,
 );
 
 @pragma('vm:entry-point')
@@ -145,10 +156,14 @@ Future<void> _initNotifications() async {
     },
   );
 
+  final androidPlugin =
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(channel);
+      AndroidFlutterLocalNotificationsPlugin>();
+
+  await androidPlugin?.createNotificationChannel(chefChannel);
+
+  await androidPlugin?.createNotificationChannel(customerChannel);
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
     final chefId = message.data['chefId'];
@@ -181,17 +196,23 @@ Future<void> _initNotifications() async {
             message.notification?.body ??
             "New message";
 
+    final isChef = message.data['isChef'] == 'true';
     await flutterLocalNotificationsPlugin.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title,
       body,
       NotificationDetails(
         android: AndroidNotificationDetails(
-          channel.id,
-          channel.name,
-          channelDescription: channel.description,
+          isChef ? chefChannel.id : customerChannel.id,
+          isChef ? chefChannel.name : customerChannel.name,
+          channelDescription:
+          isChef ? chefChannel.description : customerChannel.description,
+
           importance: Importance.max,
           priority: Priority.high,
+
+          playSound: true,
+
           icon: '@mipmap/ic_launcher',
         ),
         iOS: const DarwinNotificationDetails(

@@ -362,6 +362,41 @@ class _AddPostBottomSheetState extends State<AddPostBottomSheet> {
 
               const SizedBox(height: 22),
 
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  border: Border.all(color: Colors.amber.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.orange,
+                      size: 22,
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Service Fee Notice\n\n"
+                            "Nearby Hungry charges a 10% service fee on every successfully delivered order, "
+                            "up to a maximum of ₹30 per order. No fee is charged for cancelled or unsuccessful orders. "
+                            "By posting your menu, you agree to this service fee.",
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
               SizedBox(
                 width: double.infinity,
                 height: 54,

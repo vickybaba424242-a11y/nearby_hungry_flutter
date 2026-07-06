@@ -82,6 +82,18 @@ class PostCard extends StatelessWidget {
       images.add('assets/images/drink.jpg');
     }
 
+    if (menu.contains('kadhi')) {
+      images.add('assets/images/kadhi.jpg');
+    }
+
+    if (menu.contains('chole') || menu.contains('chhole')) {
+      images.add('assets/images/chole.jpg');
+    }
+
+    if (menu.contains('rajma') || menu.contains('raajma')) {
+      images.add('assets/images/rajma.jpg');
+    }
+
     if (images.isEmpty) {
       images.add('assets/images/default.jpg');
     }

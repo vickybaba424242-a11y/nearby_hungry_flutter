@@ -932,7 +932,7 @@
 
                     // Search Bar
                     Container(
-                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                      margin: const EdgeInsets.fromLTRB(16, 2, 16, 10),
                       height: 55,
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -1004,6 +1004,10 @@
                           _categoryItem(
                             "Vada Pav",
                             "assets/categories/vadapav.png",
+                          ),
+                          _categoryItem(
+                            "Tiffin",
+                            "assets/categories/tiffin.png",
                           ),
                           _categoryItem(
                             "Tiffin",
