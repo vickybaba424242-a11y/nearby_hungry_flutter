@@ -21,7 +21,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 const AndroidNotificationChannel chefChannel =
 AndroidNotificationChannel(
-  'chef_message_channel',
+  'chef_message_channel_v2',
   'Chef Messages',
   description: 'Urgent notifications for chefs',
   importance: Importance.max,
@@ -35,6 +35,7 @@ AndroidNotificationChannel(
   description: 'Customer notifications',
   importance: Importance.max,
   playSound: true,
+  sound: RawResourceAndroidNotificationSound('new_order'),
 );
 
 @pragma('vm:entry-point')
@@ -212,6 +213,7 @@ Future<void> _initNotifications() async {
           priority: Priority.high,
 
           playSound: true,
+          sound: const RawResourceAndroidNotificationSound('new_order'),
 
           icon: '@mipmap/ic_launcher',
         ),
