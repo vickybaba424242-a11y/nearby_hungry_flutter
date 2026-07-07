@@ -19,23 +19,18 @@ FlutterLocalNotificationsPlugin();
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-const AndroidNotificationChannel chefChannel =
-AndroidNotificationChannel(
+const AndroidNotificationChannel chefChannel = AndroidNotificationChannel(
   'chef_message_channel_v2',
   'Chef Messages',
   description: 'Urgent notifications for chefs',
   importance: Importance.max,
-  sound: RawResourceAndroidNotificationSound('new_order'),
 );
 
-const AndroidNotificationChannel customerChannel =
-AndroidNotificationChannel(
+const AndroidNotificationChannel customerChannel = AndroidNotificationChannel(
   'customer_message_channel_v2',
   'Customer Messages',
   description: 'Customer notifications',
   importance: Importance.max,
-  playSound: true,
-  sound: RawResourceAndroidNotificationSound('new_order'),
 );
 
 @pragma('vm:entry-point')
@@ -211,10 +206,7 @@ Future<void> _initNotifications() async {
 
           importance: Importance.max,
           priority: Priority.high,
-
           playSound: true,
-          sound: const RawResourceAndroidNotificationSound('new_order'),
-
           icon: '@mipmap/ic_launcher',
         ),
         iOS: const DarwinNotificationDetails(
