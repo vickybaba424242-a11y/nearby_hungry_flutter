@@ -10,6 +10,7 @@ class PostCard extends StatelessWidget {
   final VoidCallback onOptionsPressed;
   final String timeText;
   final String? expireText;
+  final String searchText;
 
   const PostCard({
     super.key,
@@ -20,6 +21,7 @@ class PostCard extends StatelessWidget {
     required this.onViewPressed,
     required this.onChatPressed,
     required this.onOptionsPressed,
+    this.searchText = "",
   });
 
   List<String> getMenuImages(String text) {
@@ -94,6 +96,26 @@ class PostCard extends StatelessWidget {
       images.add('assets/images/rajma.jpg');
     }
 
+    if (menu.contains('noodles') || menu.contains('noodle')) {
+      images.add('assets/images/noodles.jpg');
+    }
+
+    if (menu.contains('poori') || menu.contains('puri')) {
+      images.add('assets/images/poori.jpg');
+    }
+
+    if (menu.contains('idli') || menu.contains('idly')) {
+      images.add('assets/images/idli.jpg');
+    }
+
+    if (menu.contains('dosa') || menu.contains('dhosa')) {
+      images.add('assets/images/dosa.jpg');
+    }
+
+    if (menu.contains('coffee') || menu.contains('cofee')) {
+      images.add('assets/images/coffee.jpg');
+    }
+
     if (images.isEmpty) {
       images.add('assets/images/default.jpg');
     }
@@ -101,6 +123,86 @@ class PostCard extends StatelessWidget {
     return images.toList();
   }
 
+  Widget highlightText(String text, String query) {
+    if (query.trim().isEmpty) {
+      return Text(
+        text,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 14.5,
+          height: 1.35,
+          color: Color(0xFF2B2B2B),
+        ),
+      );
+    }
+
+    final matches = <TextSpan>[];
+
+    final pattern = RegExp(
+      RegExp.escape(query),
+      caseSensitive: false,
+    );
+
+    int lastMatchEnd = 0;
+
+    for (final match in pattern.allMatches(text)) {
+
+      // Normal text before match
+      if (match.start > lastMatchEnd) {
+        matches.add(
+          TextSpan(
+            text: text.substring(lastMatchEnd, match.start),
+            style: const TextStyle(
+              fontSize: 14.5,
+              height: 1.35,
+              color: Color(0xFF2B2B2B),
+            ),
+          ),
+        );
+      }
+
+
+      // Highlight text
+      matches.add(
+        TextSpan(
+          text: text.substring(match.start, match.end),
+          style: const TextStyle(
+            fontSize: 14.5,
+            height: 1.35,
+            color: Color(0xFFF94449),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+
+      lastMatchEnd = match.end;
+    }
+
+
+    // Remaining text after last match
+    if (lastMatchEnd < text.length) {
+      matches.add(
+        TextSpan(
+          text: text.substring(lastMatchEnd),
+          style: const TextStyle(
+            fontSize: 14.5,
+            height: 1.35,
+            color: Color(0xFF2B2B2B),
+          ),
+        ),
+      );
+    }
+
+
+    return Text.rich(
+      TextSpan(
+        children: matches,
+      ),
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final creatorName = isOwnPost ? "You" : (post.creatorName ?? "Nearby User");
@@ -213,15 +315,9 @@ class PostCard extends StatelessWidget {
             const SizedBox(height: 12),
 
  // ---------------- Content ----------------
-            Text(
+            highlightText(
               post.text,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 14.5,
-                height: 1.35,
-                color: Color(0xFF2B2B2B),
-              ),
+              searchText,
             ),
 
             const SizedBox(height: 10),

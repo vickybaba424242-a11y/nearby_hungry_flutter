@@ -54,6 +54,50 @@ class _InboxPageState extends State<InboxPage> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.support_agent,
+              color: Colors.black,
+            ),
+            tooltip: "Contact Support",
+            onPressed: () async {
+              final adminDoc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .where(
+                'email',
+                isEqualTo: 'nearbyhungry@gmail.com',
+              )
+                  .limit(1)
+                  .get();
+
+              if (adminDoc.docs.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      "Support team is currently unavailable.",
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              final adminId = adminDoc.docs.first.id;
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChatPage(
+                    chefId: adminId,
+                    customerId: currentUserId!,
+                    chefName: "Nearby Hungry Support",
+                    isAdmin: false,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: isAdmin

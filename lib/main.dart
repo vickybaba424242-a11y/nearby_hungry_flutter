@@ -91,6 +91,10 @@ Future<void> _initNotifications() async {
 
   debugPrint("🔔 Permission status: ${settings.authorizationStatus}");
 
+  await messaging.subscribeToTopic('all_users');
+
+  debugPrint("✅ Subscribed to all_users topic");
+
   await messaging.setForegroundNotificationPresentationOptions(
     alert: false,
     badge: true,
@@ -286,6 +290,7 @@ class AuthWrapper extends StatelessWidget {
 
         // If user exists → go to Home
         if (snapshot.hasData && snapshot.data != null) {
+          FirebaseMessaging.instance.subscribeToTopic('all_users');
           return const HomePage();
         }
 

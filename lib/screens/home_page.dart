@@ -23,6 +23,7 @@
   import 'package:flutter/rendering.dart';
   import '../screens/rewards_program_page.dart';
   import '../screens/refer_earn_page.dart';
+  import '../screens/customer_screen.dart';
 
   class HomePage extends StatefulWidget {
     final bool showOnlyMyPosts;
@@ -40,6 +41,7 @@
 
     bool _showTopSection = true;
     bool _showAppBar = true;
+    String searchedKeyword = "";
     List<Post> allPosts = [];
     List<Post> filteredPosts = [];
 
@@ -56,7 +58,10 @@
     String selectedCategory = "All";
 
     void _filterPosts() {
-      final search = _searchController.text.trim().toLowerCase();
+
+      searchedKeyword = _searchController.text.trim();
+
+      final search = searchedKeyword.toLowerCase();
 
       filteredPosts = allPosts.where((post) {
 
@@ -776,6 +781,16 @@
                 setState(() => showOnlyMyPosts = true);
                 _loadPosts();
                 break;
+              case 'customers':
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CustomersScreen(),
+                  ),
+                );
+
+                break;
               case 'instagram':
                 _openInstagram();
                 break;
@@ -1009,10 +1024,6 @@
                             "Tiffin",
                             "assets/categories/tiffin.png",
                           ),
-                          _categoryItem(
-                            "Tiffin",
-                            "assets/categories/tiffin.png",
-                          ),
                         ],
                       ),
                     ),
@@ -1050,6 +1061,7 @@
                                 isOwnPost: isOwnPost,
                                 timeText: timeText,
                                 expireText: isOwnPost ? expireText : null,
+                                searchText: searchedKeyword,
                                 onViewPressed: () {
                                   showModalBottomSheet(
                                     context: context,
@@ -1063,6 +1075,7 @@
                                         return PostDetailPage(
                                           postId: post.id,
                                           scrollController: scrollController,
+                                          searchText: searchedKeyword,
                                         );
                                       },
                                     ),

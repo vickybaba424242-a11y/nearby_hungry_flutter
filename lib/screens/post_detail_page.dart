@@ -8,11 +8,13 @@ import '../screens/chat_page.dart';
 class PostDetailPage extends StatefulWidget {
   final String postId;
   final ScrollController? scrollController;
+  final String? searchText;
 
   const PostDetailPage({
     super.key,
     required this.postId,
     this.scrollController,
+    this.searchText,
   });
 
   @override
@@ -116,6 +118,101 @@ class _PostDetailPageState extends State<PostDetailPage> {
       print("VIEW ERROR: $e");
       print(stack);
     }
+  }
+
+  Widget _highlightText(String text) {
+
+    final keyword = widget.searchText?.trim();
+
+    if (keyword == null || keyword.isEmpty) {
+      return Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          color: Colors.black,
+        ),
+      );
+    }
+
+    final regex = RegExp(
+      RegExp.escape(keyword),
+      caseSensitive: false,
+    );
+
+    final matches = regex.allMatches(text);
+
+    if (matches.isEmpty) {
+      return Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          color: Colors.black,
+        ),
+      );
+    }
+
+
+    List<TextSpan> spans = [];
+
+    int lastIndex = 0;
+
+
+    for (final match in matches) {
+
+      if (match.start > lastIndex) {
+        spans.add(
+          TextSpan(
+            text: text.substring(
+              lastIndex,
+              match.start,
+            ),
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 14,
+            ),
+          ),
+        );
+      }
+
+
+      spans.add(
+        TextSpan(
+          text: text.substring(
+            match.start,
+            match.end,
+          ),
+          style: const TextStyle(
+            backgroundColor: Colors.yellow,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+            fontSize: 14,
+          ),
+        ),
+      );
+
+
+      lastIndex = match.end;
+    }
+
+
+    if (lastIndex < text.length) {
+      spans.add(
+        TextSpan(
+          text: text.substring(lastIndex),
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 14,
+          ),
+        ),
+      );
+    }
+
+
+    return RichText(
+      text: TextSpan(
+        children: spans,
+      ),
+    );
   }
 
   // ================= LOAD POST =================
@@ -326,14 +423,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   const SizedBox(height: 10),
 
                   // Content
-                  Text(
-                    content,
-                    softWrap: true,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
-                  ),
+                  _highlightText(content),
 
                   const SizedBox(height: 16),
 

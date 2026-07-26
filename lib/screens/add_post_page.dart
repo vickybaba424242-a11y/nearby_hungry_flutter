@@ -137,6 +137,7 @@ class _AddPostBottomSheetState extends State<AddPostBottomSheet> {
           "creatorId": user.uid,
           "creatorName": user.displayName ?? "Nearby User",
           "timestamp": FieldValue.serverTimestamp(),
+          "lastRepostedAt": FieldValue.serverTimestamp(),
 
           "latitude": userLat!,
           "longitude": userLng!,

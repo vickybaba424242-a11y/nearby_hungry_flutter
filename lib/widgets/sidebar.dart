@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:nearby_hungry_flutter/services/contact_sync_service.dart';
 
 class Sidebar extends StatelessWidget {
   final User? user;
@@ -92,6 +93,97 @@ class Sidebar extends StatelessWidget {
                 children: [
                   _buildMenuTile('Home', Icons.home, 'home', context),
                   _buildMenuTile('My Posts', Icons.list, 'my_posts', context),
+                  if (user?.email?.toLowerCase() == 'nearbyhungry@gmail.com')
+                    ListTile(
+                      leading: const Icon(Icons.people),
+                      title: const Text('Customers'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        onMenuTap('customers');
+                      },
+                    ),
+                  if (user?.email?.toLowerCase() == 'nearbyhungry@gmail.com')
+                    ListTile(
+                      leading: const Icon(Icons.contacts),
+                      title: const Text('Sync Chef Contacts'),
+                        onTap: () async {
+                          print("🔥 Sync menu clicked");
+
+                          final shouldSync = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text("Sync Chef Contacts"),
+                              content: const Text(
+                                "This will save all chef contacts from Firebase to your phone. Continue?",
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: const Text("Cancel"),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text("Sync"),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          print("shouldSync = $shouldSync");
+
+                          if (shouldSync != true) return;
+
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) => const AlertDialog(
+                              content: Row(
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(width: 20),
+                                  Expanded(
+                                    child: Text("Syncing chef contacts..."),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+
+                          try {
+                            print("🚀 Calling ContactSyncService");
+
+                            final result = await ContactSyncService().syncChefContacts();
+
+                            Navigator.pop(context);
+
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text("Success"),
+                                content: Text(result),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text("OK"),
+                                  ),
+                                ],
+                              ),
+                            );
+                          } catch (e) {
+                            Navigator.pop(context);
+
+                            print(e);
+
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text("Error"),
+                                content: Text(e.toString()),
+                              ),
+                            );
+                          }
+                        },
+                    ),
                   _buildMenuTile(
                     'Follow us on Instagram',
                     Icons.camera_alt,

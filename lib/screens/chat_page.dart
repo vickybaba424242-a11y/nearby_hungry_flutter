@@ -58,6 +58,52 @@ class _ChatPageState extends State<ChatPage> {
 
   bool _showAttachmentMenu = false;
 
+  static const String adminEmail =
+      "nearbyhungry@gmail.com";
+
+  bool get isAdminUser {
+    final user = FirebaseAuth.instance.currentUser;
+    return user?.email == adminEmail;
+  }
+
+  Future<void> _deleteMessage(
+      DocumentReference messageRef,
+      ) async {
+
+    if (!isAdminUser) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Message"),
+        content: const Text(
+            "Do you want to delete this message?"),
+        actions: [
+
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.pop(context, true),
+            child: const Text("Delete"),
+          ),
+
+        ],
+      ),
+    );
+
+
+    if (confirm == true) {
+
+      await messageRef.delete();
+
+    }
+  }
+
   Future<void> _openSupportWhatsApp() async {
     final Uri uri = Uri.parse(
       "https://api.whatsapp.com/send?phone=$supportNumber&text=${Uri.encodeComponent("Hi Nearby Hungry Support, I want to place an order.")}",
@@ -231,23 +277,29 @@ class _ChatPageState extends State<ChatPage> {
 
     _controller.clear();
 
-    final otherUserId =
-    currentUserId == widget.chefId
+    final otherUserId = widget.isAdmin
+        ? widget.customerId
+        : currentUserId == widget.chefId
         ? widget.customerId
         : widget.chefId;
 
     final msg = {
-      'senderId': currentUserId,
+      'senderId': widget.isAdmin
+          ? widget.chefId
+          : currentUserId,
+
+      'senderRole': widget.isAdmin
+          ? 'chef'
+          : (isCustomer ? 'customer' : 'chef'),
+
+      'sentByAdmin': widget.isAdmin,
+
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
       'seen': false,
 
-      // reply feature
-      'replyText':
-      replyingToMessage?['text'],
-
-      'replySenderId':
-      replyingToMessage?['senderId'],
+      'replyText': replyingToMessage?['text'],
+      'replySenderId': replyingToMessage?['senderId'],
     };
 
     final updates = {
@@ -331,10 +383,7 @@ class _ChatPageState extends State<ChatPage> {
 
     if (shouldShare != true) return;
 
-    final otherUserId =
-    currentUserId == widget.chefId
-        ? widget.customerId
-        : widget.chefId;
+    final otherUserId = widget.customerId;
 
     try {
       await LocationService.shareLocation(
@@ -505,7 +554,6 @@ class _ChatPageState extends State<ChatPage> {
                 child: _buildMessages(),
               ),
 
-              if (!widget.isAdmin)
                 _buildInput(),
             ],
           ),
@@ -671,12 +719,25 @@ class _ChatPageState extends State<ChatPage> {
                             timestamp: data['timestamp'],
                           )
                         else
-                          MessageBubble(
-                            text: data['text'] ?? '',
-                            replyText: data['replyText'],
-                            isMe: isMe,
-                            timestamp: data['timestamp'],
-                            seen: data['seen'] == true,
+                          GestureDetector(
+
+                            onLongPress: isAdminUser
+                                ? () {
+                              _deleteMessage(
+                                docs[index].reference,
+                              );
+                            }
+                                : null,
+
+
+                            child: MessageBubble(
+                              text: data['text'] ?? '',
+                              replyText: data['replyText'],
+                              isMe: isMe,
+                              timestamp: data['timestamp'],
+                              seen: data['seen'] == true,
+                            ),
+
                           ),
                       ],
                     ),
@@ -724,11 +785,12 @@ class _ChatPageState extends State<ChatPage> {
           const SizedBox(height: 10),
 
           const Text(
-            "If you want to place your order faster, contact the Nearby Hungry Team on WhatsApp.",
-            style: TextStyle(fontSize: 14),
+            "To place your order faster, contact the Nearby Hungry Team on WhatsApp.\n"
+            "And to make a payment, tap the ➕ icon and select the Payment option 💳.",
+            style: TextStyle(fontSize: 12),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           InkWell(
             onTap: _openSupportWhatsApp,
@@ -790,8 +852,8 @@ class _ChatPageState extends State<ChatPage> {
 
           Text(
             "⚠️ Before preparing the order, ask the customer to complete the payment and share the payment screenshot.\n"
-                "Your payment will be released by Nearby Hungry after successful delivery.\n"
-                "Note: Payment and screenshot options are available only for customers.",
+                "Payment will be released by Nearby Hungry after successful delivery.\n"
+                "Note: Payment & screenshot options are for customers only.",
             style: const TextStyle(fontSize: 11),
           ),
         ],
