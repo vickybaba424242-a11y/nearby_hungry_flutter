@@ -9,6 +9,9 @@
 	<key>CFBundleDisplayName</key>
 	<string>Nearby Hungry</string>
 
+	<key>NSContactsUsageDescription</key>
+	<string>Nearby Hungry uses contacts only to help you find and connect with people you choose to share the app with.</string>
+
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 
