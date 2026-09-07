@@ -1481,7 +1481,7 @@
                       ),
                     ),
 
-                    const SizedBox(width: 18),
+                    const SizedBox(width: 2),
 
                     Expanded(
                       child: Align(
@@ -1701,6 +1701,8 @@
                 ),
                 child: Column(
                   children: [
+
+                    const SizedBox(height: 14),
 
                     // Search Bar
                     Container(

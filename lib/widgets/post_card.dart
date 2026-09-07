@@ -563,92 +563,55 @@ class PostCard extends StatelessWidget {
               const SizedBox(height: 8),
             ],
 
-            // ---------------- Today's Menu ----------------
-
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF8F7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-
-                  const Icon(
-                    Icons.restaurant_menu,
-                    size: 18,
-                    color: Color(0xFFF94449),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  Expanded(
-                    child: highlightText(
-                      post.text,
-                      searchText,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
             // ---------------- Meta ----------------
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-
-              child: Row(
-                children: [
-
-                  const Icon(
-                    Icons.schedule,
-                    size: 16,
-                    color: Color(0xFFF94449),
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  Text(
-                    timeText,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  if (isOwnPost && post.views != null) ...[
+            if (isOwnPost || isAdmin)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
                     const Icon(
-                      Icons.visibility_outlined,
+                      Icons.schedule,
                       size: 16,
                       color: Color(0xFFF94449),
                     ),
 
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 6),
 
                     Text(
-                      "${post.views}",
+                      timeText,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
+
+                    const Spacer(),
+
+                    if (isOwnPost && post.views != null) ...[
+                      const Icon(
+                        Icons.visibility_outlined,
+                        size: 16,
+                        color: Color(0xFFF94449),
+                      ),
+
+                      const SizedBox(width: 5),
+
+                      Text(
+                        "${post.views}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
 
             if (expireText != null) ...[
               const SizedBox(height: 6),
