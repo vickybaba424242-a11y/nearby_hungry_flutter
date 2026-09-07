@@ -20,8 +20,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.22.4
+          flutter-version: 3.38.8
           channel: stable
+          architecture: x64
 
       - name: Check Flutter Version
         run: |
@@ -42,7 +43,11 @@ jobs:
         env:
           CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
         run: |
-          openssl pkcs12 -info -in certificate.p12 -noout -password pass:$CERTIFICATE_PASSWORD
+          openssl pkcs12 \
+            -info \
+            -in certificate.p12 \
+            -noout \
+            -password pass:"$CERTIFICATE_PASSWORD"
 
       - name: Install Apple Certificate
         env:
