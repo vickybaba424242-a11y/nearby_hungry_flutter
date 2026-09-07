@@ -1495,18 +1495,18 @@
                               color: userLat != null
                                   ? Colors.greenAccent
                                   : Colors.redAccent,
-                              size: 16,
+                              size: 20,
                             ),
 
                             const SizedBox(width: 6),
 
                             Text(
                               userLat != null
-                                  ? "Location Active"
+                                  ? "Location On"
                                   : "Location Off",
                               style: GoogleFonts.poppins(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
