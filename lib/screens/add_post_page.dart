@@ -860,7 +860,7 @@ class _AddPostBottomSheetState extends State<AddPostBottomSheet> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  "Please add menu items with prices.\nExample: Paneer Tikka - ₹220",
+                  "Please add menu items with prices.\nExample:- Paneer Tikka - ₹220",
                 ),
               ),
             );
