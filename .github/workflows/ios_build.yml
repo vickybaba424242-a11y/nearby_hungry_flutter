@@ -22,7 +22,7 @@ jobs:
         with:
           flutter-version: 3.22.4
           channel: stable
-	  architecture: x64
+          architecture: x64
 
       - name: Check Flutter Version
         run: |
