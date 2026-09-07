@@ -1484,35 +1484,34 @@
                     const SizedBox(width: 2),
 
                     Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            color: userLat != null
+                                ? Colors.greenAccent
+                                : Colors.redAccent,
+                            size: 20,
+                          ),
 
-                            Icon(
-                              Icons.location_on,
-                              color: userLat != null
-                                  ? Colors.greenAccent
-                                  : Colors.redAccent,
-                              size: 20,
-                            ),
+                          const SizedBox(width: 4),
 
-                            const SizedBox(width: 6),
-
-                            Text(
+                          Flexible(
+                            child: Text(
                               userLat != null
                                   ? "Location On"
                                   : "Location Off",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.poppins(
                                 color: Colors.white,
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
 
@@ -1528,13 +1527,13 @@
                             IconButton(
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
-                                minWidth: 40,
-                                minHeight: 40,
+                                minWidth: 36,
+                                minHeight: 36,
                               ),
                               icon: Image.asset(
                                 'assets/message.png',
-                                width: 24,
-                                height: 24,
+                                width: 22,
+                                height: 22,
                                 color: Colors.white,
                               ),
                               onPressed: () {
@@ -1599,7 +1598,7 @@
                                 const SizedBox(width: 2),
 
                                 Transform.scale(
-                                  scale: 0.75,
+                                  scale: 0.65,
                                   child: Switch(
                                     // IMPORTANT:
                                     // Switch ON  = posts ACTIVE
