@@ -9,6 +9,9 @@ import '../chat/services/location_service.dart';
 import '../chat/widgets/location_bubble.dart';
 import '../chat/payment/payment_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
+import '../services/order_service.dart';
+import '../models/order_model.dart';
 
 class ChatPage extends StatefulWidget {
   final String chefId;
@@ -58,12 +61,189 @@ class _ChatPageState extends State<ChatPage> {
 
   bool _showAttachmentMenu = false;
 
+  bool _showSupportInfo = false;
+  bool _showChefInfo = false;
+
+  bool _automaticChefMessageChecked = false;
+
   static const String adminEmail =
       "nearbyhungry@gmail.com";
 
   bool get isAdminUser {
     final user = FirebaseAuth.instance.currentUser;
     return user?.email == adminEmail;
+  }
+
+  Future<void> _createOrder() async {
+    print('===== CREATE ORDER START =====');
+
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      if (!isCustomer) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Only customers can create an order.'),
+          ),
+        );
+        return;
+      }
+
+      final userDoc = await _db
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      final userData = userDoc.data() ?? {};
+
+      final customerPhone =
+      (userData['phone'] ??
+          userData['phoneNumber'] ??
+          '')
+          .toString();
+
+      final address =
+      (userData['address'] ??
+          userData['fullAddress'] ??
+          '')
+          .toString();
+
+      final order = OrderModel(
+        id: '',
+        chatId: chatId,
+        customerId: widget.customerId,
+        chefId: widget.chefId,
+        items: [
+          OrderItem(
+            postId: 'chat_order',
+            foodName: 'Rajma Chawal',
+            quantity: 1,
+            price: 120,
+          ),
+        ],
+        subtotal: 120,
+        deliveryCharge: 30,
+        total: 150,
+        status: OrderStatus.pending,
+        paymentStatus: PaymentStatus.pending,
+        address: address,
+        customerPhone: customerPhone,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final orderId = await OrderService.createOrder(
+        order: order,
+      );
+
+      await _db
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add({
+        'type': 'order',
+        'orderId': orderId,
+        'senderId': currentUserId,
+        'senderRole': 'customer',
+        'sentByAdmin': false,
+        'timestamp': FieldValue.serverTimestamp(),
+        'seen': false,
+      });
+
+      print('===== ORDER CREATED =====');
+      print('ORDER ID: $orderId');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order sent to the chef.'),
+        ),
+      );
+    } catch (e) {
+      print('===== ORDER CREATION FAILED =====');
+      print(e);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to create order: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _updateOrderStatus(
+      String orderId,
+      OrderStatus status,
+      ) async {
+    try {
+      await _db
+          .collection('orders')
+          .doc(orderId)
+          .update({
+        'status': status.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Order status updated to ${status.name}.',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Order status update failed: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to update order: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _markOrderPaid(String orderId) async {
+    try {
+      await _db
+          .collection('orders')
+          .doc(orderId)
+          .update({
+        'status': OrderStatus.paid.name,
+        'paymentStatus': PaymentStatus.paid.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Payment marked as completed.'),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Payment status update failed: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to update payment: $e'),
+        ),
+      );
+    }
   }
 
   Future<void> _deleteMessage(
@@ -704,7 +884,12 @@ class _ChatPageState extends State<ChatPage> {
                             ),
                           ),
                         ),
-                        if (data['type'] == 'location')
+                        if (data['type'] == 'order')
+                          OrderBubble(
+                            orderId: data['orderId'] ?? '',
+                            isMe: isMe,
+                          )
+                        else if (data['type'] == 'location')
                           LocationBubble(
                             latitude: (data['latitude'] as num).toDouble(),
                             longitude: (data['longitude'] as num).toDouble(),
@@ -713,32 +898,28 @@ class _ChatPageState extends State<ChatPage> {
                             timestamp: data['timestamp'],
                           )
                         else if (data['type'] == 'image')
-                          ImageBubble(
-                            imageUrl: data['imageUrl'],
-                            isMe: isMe,
-                            timestamp: data['timestamp'],
-                          )
-                        else
-                          GestureDetector(
-
-                            onLongPress: isAdminUser
-                                ? () {
-                              _deleteMessage(
-                                docs[index].reference,
-                              );
-                            }
-                                : null,
-
-
-                            child: MessageBubble(
-                              text: data['text'] ?? '',
-                              replyText: data['replyText'],
+                            ImageBubble(
+                              imageUrl: data['imageUrl'],
                               isMe: isMe,
                               timestamp: data['timestamp'],
-                              seen: data['seen'] == true,
+                            )
+                          else
+                            GestureDetector(
+                              onLongPress: isAdminUser
+                                  ? () {
+                                _deleteMessage(
+                                  docs[index].reference,
+                                );
+                              }
+                                  : null,
+                              child: MessageBubble(
+                                text: data['text'] ?? '',
+                                replyText: data['replyText'],
+                                isMe: isMe,
+                                timestamp: data['timestamp'],
+                                seen: data['seen'] == true,
+                              ),
                             ),
-
-                          ),
                       ],
                     ),
                   ),
@@ -753,56 +934,99 @@ class _ChatPageState extends State<ChatPage> {
 
   Widget _buildSupportMessage() {
     return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Colors.orange.shade300,
+          color: Colors.orange.shade200,
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.support_agent,
-                color: Colors.orange,
-              ),
-              SizedBox(width: 8),
-              Text(
-                "Nearby Hungry",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          const Text(
-            "To place your order faster, contact the Nearby Hungry Team on WhatsApp.\n"
-            "And to make a payment, tap the ➕ icon and select the Payment option 💳.",
-            style: TextStyle(fontSize: 12),
-          ),
-
-          const SizedBox(height: 8),
-
           InkWell(
-            onTap: _openSupportWhatsApp,
-            child: const Text(
-              "📱 +91 82877 46086",
-              style: TextStyle(
-                color: Colors.green,
-                fontWeight: FontWeight.bold,
-                decoration: TextDecoration.underline,
+            borderRadius: BorderRadius.circular(10),
+            onTap: () {
+              setState(() {
+                _showSupportInfo = !_showSupportInfo;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.support_agent,
+                    color: Colors.orange.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      "Need help with your order?",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _showSupportInfo
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 20,
+                  ),
+                ],
               ),
             ),
           ),
+
+          if (_showSupportInfo)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                12,
+                0,
+                12,
+                10,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+
+                  const Text(
+                    "To place your order faster, contact the Nearby Hungry Team on WhatsApp.\n"
+                        "And to make a payment, tap the ➕ icon and select the Payment option 💳.",
+                    style: TextStyle(
+                      fontSize: 11,
+                      height: 1.3,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  InkWell(
+                    onTap: _openSupportWhatsApp,
+                    child: const Text(
+                      "📱 +91 82877 46086",
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -810,52 +1034,87 @@ class _ChatPageState extends State<ChatPage> {
 
   Widget _buildChefMessage() {
     return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Colors.green.shade300,
+          color: Colors.green.shade200,
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Row(
-            children: [
-              Icon(
-                Icons.restaurant,
-                color: Colors.green,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () {
+              setState(() {
+                _showChefInfo = !_showChefInfo;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
               ),
-              SizedBox(width: 8),
-              Text(
-                "Important for Chefs",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.restaurant,
+                    color: Colors.green.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      "Important for Chefs",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _showChefInfo
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 20,
+                  ),
+                ],
               ),
-            ],
-          ),
-
-          SizedBox(height: 6),
-
-          Text(
-            "Before you start preparing the order:",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
             ),
           ),
 
-          SizedBox(height: 4),
+          if (_showChefInfo)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(
+                12,
+                0,
+                12,
+                10,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Divider(height: 1),
+                  SizedBox(height: 8),
 
-          Text(
-            "⚠️ Before preparing the order, ask the customer to complete the payment and share the payment screenshot.\n"
-                "Payment will be released by Nearby Hungry after successful delivery.\n"
-                "Note: Payment & screenshot options are for customers only.",
-            style: const TextStyle(fontSize: 11),
-          ),
+                  Text(
+                    "⚠️ Before preparing the order, ask the customer to complete "
+                        "the payment and share the payment screenshot.\n"
+                        "Payment will be released by Nearby Hungry after successful "
+                        "delivery.\n"
+                        "Note: Payment & screenshot options are for customers only.",
+                    style: TextStyle(
+                      fontSize: 10,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -1062,6 +1321,730 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
+class OrderBubble extends StatelessWidget {
+  final String orderId;
+  final bool isMe;
+
+  const OrderBubble({
+    super.key,
+    required this.orderId,
+    required this.isMe,
+  });
+
+  Future<void> _updateStatus(
+      BuildContext context,
+      OrderStatus status,
+      ) async {
+    try {
+      final db = FirebaseFirestore.instance;
+
+      // Get order
+      final orderDoc = await db
+          .collection('orders')
+          .doc(orderId)
+          .get();
+
+      if (!orderDoc.exists) {
+        throw Exception('Order not found');
+      }
+
+      final orderData =
+      orderDoc.data() as Map<String, dynamic>;
+
+      final chatId = orderData['chatId']?.toString();
+      final chefId = orderData['chefId']?.toString();
+      final customerId =
+      orderData['customerId']?.toString();
+
+      final total =
+          (orderData['total'] as num?)?.toDouble() ?? 0;
+
+      if (chatId == null || chatId.isEmpty) {
+        throw Exception('Chat ID not found');
+      }
+
+      if (chefId == null || chefId.isEmpty) {
+        throw Exception('Chef ID not found');
+      }
+
+      if (customerId == null || customerId.isEmpty) {
+        throw Exception('Customer ID not found');
+      }
+
+      // ----------------------------------------
+      // 1. UPDATE ORDER STATUS
+      // ----------------------------------------
+
+      await db
+          .collection('orders')
+          .doc(orderId)
+          .update({
+        'status': status.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // ----------------------------------------
+      // 2. SEND PAYMENT MESSAGE ONLY AFTER
+      //    CHEF ACCEPTS THE ORDER
+      // ----------------------------------------
+
+      if (status == OrderStatus.accepted) {
+        final paymentMessage =
+            '✅ Your order has been accepted by the chef.\n\n'
+            '💳 Please complete the payment of '
+            '₹${total.toStringAsFixed(0)} '
+            'to confirm your order.\n\n'
+            'After making the payment, tap "I Have Paid" '
+            'on the order.';
+
+        await db
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .add({
+          'type': 'payment_request',
+          'text': paymentMessage,
+          'orderId': orderId,
+          'amount': total,
+          'senderId': chefId,
+          'senderRole': 'chef',
+          'sentByAdmin': false,
+          'timestamp': FieldValue.serverTimestamp(),
+          'seen': false,
+        });
+
+        // Update chat preview
+        await db
+            .collection('chats')
+            .doc(chatId)
+            .set({
+          'chefId': chefId,
+          'customerId': customerId,
+          'participants': [
+            chefId,
+            customerId,
+          ],
+          'lastMessage': paymentMessage,
+          'lastMessageTime':
+          FieldValue.serverTimestamp(),
+          'unreadCount_$customerId':
+          FieldValue.increment(1),
+        }, SetOptions(merge: true));
+      }
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            status == OrderStatus.accepted
+                ? 'Order accepted. Payment request sent.'
+                : 'Order updated to ${status.name}.',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint(
+        'Order status update failed: $e',
+      );
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to update order: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _markPaid(BuildContext context) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('orders')
+          .doc(orderId)
+          .update({
+        'status': OrderStatus.paid.name,
+        'paymentStatus': PaymentStatus.paid.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Payment marked as completed.'),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to update payment: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openPayment(
+      BuildContext context,
+      OrderModel order,
+      ) async {
+    try {
+      await PaymentService.openUPI(
+        context,
+        isCustomer: true,
+        chatId: order.chatId,
+        senderId: order.customerId,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to open payment: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _actionButton({
+    required String text,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(text),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(
+            vertical: 11,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildActions(
+      BuildContext context,
+      OrderModel order,
+      ) {
+    final actions = <Widget>[];
+
+    /*
+     * CHEF ACTIONS
+     */
+
+    if (!isMe && order.status == OrderStatus.pending) {
+      actions.add(
+        _actionButton(
+          text: 'Accept Order',
+          icon: Icons.check_circle,
+          color: Colors.green,
+          onPressed: () {
+            _updateStatus(
+              context,
+              OrderStatus.accepted,
+            );
+          },
+        ),
+      );
+
+      actions.add(
+        const SizedBox(height: 8),
+      );
+
+      actions.add(
+        _actionButton(
+          text: 'Reject Order',
+          icon: Icons.cancel,
+          color: Colors.red,
+          onPressed: () {
+            _updateStatus(
+              context,
+              OrderStatus.rejected,
+            );
+          },
+        ),
+      );
+    }
+
+    if (!isMe &&
+        (order.status == OrderStatus.accepted ||
+            order.status == OrderStatus.paid)) {
+      actions.add(
+        _actionButton(
+          text: 'Start Preparing',
+          icon: Icons.restaurant,
+          color: Colors.deepOrange,
+          onPressed: () {
+            _updateStatus(
+              context,
+              OrderStatus.preparing,
+            );
+          },
+        ),
+      );
+    }
+
+    if (!isMe &&
+        order.status == OrderStatus.preparing) {
+      actions.add(
+        _actionButton(
+          text: 'Mark Picked Up',
+          icon: Icons.delivery_dining,
+          color: Colors.blue,
+          onPressed: () {
+            _updateStatus(
+              context,
+              OrderStatus.pickedUp,
+            );
+          },
+        ),
+      );
+    }
+
+    if (!isMe &&
+        order.status == OrderStatus.pickedUp) {
+      actions.add(
+        _actionButton(
+          text: 'Mark Delivered',
+          icon: Icons.check_circle,
+          color: Colors.green,
+          onPressed: () {
+            _updateStatus(
+              context,
+              OrderStatus.delivered,
+            );
+          },
+        ),
+      );
+    }
+
+    /*
+     * CUSTOMER ACTIONS
+     */
+
+    if (isMe &&
+        order.status == OrderStatus.accepted &&
+        order.paymentStatus == PaymentStatus.pending) {
+      actions.add(
+        _actionButton(
+          text: 'Pay ₹${order.total.toStringAsFixed(0)}',
+          icon: Icons.payment,
+          color: Colors.blue,
+          onPressed: () {
+            _openPayment(
+              context,
+              order,
+            );
+          },
+        ),
+      );
+    }
+
+    /*
+     * CUSTOMER PAYMENT CONFIRMATION
+     *
+     * This button is intentionally separate from opening UPI.
+     * Opening UPI does NOT automatically mean payment succeeded.
+     */
+
+    if (isMe &&
+        order.status == OrderStatus.accepted &&
+        order.paymentStatus == PaymentStatus.pending) {
+      actions.add(
+        const SizedBox(height: 8),
+      );
+
+      actions.add(
+        _actionButton(
+          text: 'I Have Paid',
+          icon: Icons.verified,
+          color: Colors.green,
+          onPressed: () {
+            _markPaid(context);
+          },
+        ),
+      );
+    }
+
+    /*
+     * CUSTOMER DELIVERY CONFIRMATION
+     */
+
+    if (isMe &&
+        order.status == OrderStatus.pickedUp) {
+      actions.add(
+        _actionButton(
+          text: 'Confirm Delivery',
+          icon: Icons.check_circle,
+          color: Colors.green,
+          onPressed: () {
+            _updateStatus(
+              context,
+              OrderStatus.delivered,
+            );
+          },
+        ),
+      );
+    }
+
+    return actions;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<OrderModel?>(
+      stream: OrderService.listenToOrder(orderId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return Align(
+            alignment:
+            isMe
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+            child: const Padding(
+              padding: EdgeInsets.all(12),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        final order = snapshot.data;
+
+        if (order == null) {
+          return Align(
+            alignment:
+            isMe
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+            child: Container(
+              margin: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                BorderRadius.circular(14),
+              ),
+              child: const Text(
+                'Order is no longer available.',
+              ),
+            ),
+          );
+        }
+
+        final actions =
+        _buildActions(context, order);
+
+        return Align(
+          alignment:
+          isMe
+              ? Alignment.centerRight
+              : Alignment.centerLeft,
+          child: Container(
+            width: 320,
+            margin: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 5,
+            ),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius:
+              BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.orange.shade200,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color:
+                  Colors.black.withOpacity(0.06),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.restaurant_menu,
+                      color: Colors.orange,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'ORDER',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight:
+                          FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    _statusChip(order.status),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                ...order.items.map(
+                      (item) => Padding(
+                    padding:
+                    const EdgeInsets.only(
+                      bottom: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${item.foodName} × ${item.quantity}',
+                            style:
+                            const TextStyle(
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '₹${(item.price * item.quantity).toStringAsFixed(0)}',
+                          style:
+                          const TextStyle(
+                            fontWeight:
+                            FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const Divider(),
+
+                _priceRow(
+                  'Subtotal',
+                  order.subtotal,
+                ),
+
+                _priceRow(
+                  'Delivery',
+                  order.deliveryCharge,
+                ),
+
+                const SizedBox(height: 4),
+
+                _priceRow(
+                  'Total',
+                  order.total,
+                  bold: true,
+                ),
+
+                const SizedBox(height: 10),
+
+                Text(
+                  _statusText(order.status),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                    FontWeight.w600,
+                    color:
+                    _statusColor(
+                      order.status,
+                    ),
+                  ),
+                ),
+
+                if (order.paymentStatus ==
+                    PaymentStatus.paid) ...[
+                  const SizedBox(height: 6),
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.verified,
+                        size: 17,
+                        color: Colors.green,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Payment completed',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight:
+                          FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                if (actions.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ...actions,
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _priceRow(
+      String title,
+      double amount, {
+        bool bold = false,
+      }) {
+    return Padding(
+      padding:
+      const EdgeInsets.symmetric(
+        vertical: 2,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontWeight:
+                bold
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+              ),
+            ),
+          ),
+          Text(
+            '₹${amount.toStringAsFixed(0)}',
+            style: TextStyle(
+              fontWeight:
+              bold
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(
+      OrderStatus status,
+      ) {
+    return Container(
+      padding:
+      const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color:
+        _statusColor(status)
+            .withOpacity(0.12),
+        borderRadius:
+        BorderRadius.circular(20),
+      ),
+      child: Text(
+        status.name,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight:
+          FontWeight.bold,
+          color:
+          _statusColor(status),
+        ),
+      ),
+    );
+  }
+
+  String _statusText(
+      OrderStatus status,
+      ) {
+    switch (status) {
+      case OrderStatus.pending:
+        return '⏳ Waiting for chef';
+
+      case OrderStatus.accepted:
+        return '✅ Chef accepted the order';
+
+      case OrderStatus.modified:
+        return '✏️ Order modified';
+
+      case OrderStatus.rejected:
+        return '❌ Order rejected';
+
+      case OrderStatus.paid:
+        return '💳 Payment completed';
+
+      case OrderStatus.preparing:
+        return '👨‍🍳 Order is being prepared';
+
+      case OrderStatus.pickedUp:
+        return '🛵 Order picked up';
+
+      case OrderStatus.delivered:
+        return '🎉 Order delivered';
+
+      case OrderStatus.cancelled:
+        return '❌ Order cancelled';
+    }
+  }
+
+  Color _statusColor(
+      OrderStatus status,
+      ) {
+    switch (status) {
+      case OrderStatus.pending:
+        return Colors.orange;
+
+      case OrderStatus.accepted:
+        return Colors.green;
+
+      case OrderStatus.modified:
+        return Colors.blue;
+
+      case OrderStatus.rejected:
+        return Colors.red;
+
+      case OrderStatus.paid:
+        return Colors.green;
+
+      case OrderStatus.preparing:
+        return Colors.deepOrange;
+
+      case OrderStatus.pickedUp:
+        return Colors.blue;
+
+      case OrderStatus.delivered:
+        return Colors.green;
+
+      case OrderStatus.cancelled:
+        return Colors.red;
+    }
+  }
+}
+
 class MessageBubble extends StatelessWidget
 {
   final String text;
@@ -1161,7 +2144,26 @@ class MessageBubble extends StatelessWidget
                 ),
               ),
 
-            Text(text),
+            GestureDetector(
+              onLongPress: () {
+                Clipboard.setData(
+                  ClipboardData(text: text),
+                );
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Message copied"),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              },
+              child: Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 15,
+                ),
+              ),
+            ),
 
             const SizedBox(height: 4),
 

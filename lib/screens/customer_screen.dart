@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_customer_feed_screen.dart';
 import 'admin_chat_page.dart';
+import '../admin/location_search_page.dart';
 
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key});
@@ -32,8 +33,31 @@ class _CustomersScreenState extends State<CustomersScreen> {
     return Scaffold(
 
       appBar: AppBar(
-        title: const Text("Customers"),
+
+        title:
+        const Text("Customers"),
         backgroundColor: const Color(0xFFF94449),
+
+
+        actions: [
+
+          IconButton(
+            icon: const Icon(Icons.location_on),
+
+            onPressed: () async {
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const LocationSearchPage(),
+                ),
+              );
+
+            },
+          ),
+
+        ],
+
       ),
 
 

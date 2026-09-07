@@ -13,6 +13,8 @@ import 'screens/register_page.dart';
 import 'screens/forgot_password.dart';
 import 'screens/chat_page.dart';
 import 'active_chat.dart';
+import 'package:provider/provider.dart';
+import 'providers/cart_provider.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
@@ -77,7 +79,12 @@ Future<void> main() async {
 
   await _initNotifications();
 
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => CartProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 Future<void> _initNotifications() async {

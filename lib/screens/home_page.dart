@@ -24,6 +24,10 @@
   import '../screens/rewards_program_page.dart';
   import '../screens/refer_earn_page.dart';
   import '../screens/customer_screen.dart';
+  import 'package:flutter/services.dart';
+  import '../widgets/restaurant_card.dart';
+  import '../screens/chef_reviews_screen.dart';
+  import 'package:flutter/foundation.dart';
 
   class HomePage extends StatefulWidget {
     final bool showOnlyMyPosts;
@@ -55,7 +59,150 @@
     bool loadingPosts = true;
     int unreadChats = 0;
 
+    // Post visibility
+    bool _hasPosts = false;
+    bool _hideMyPosts = false;
+
     String selectedCategory = "All";
+    String selectedProvider = 'homeChef';
+
+    Future<void> _loadPostVisibilitySettings() async {
+      final user = _auth.currentUser;
+
+      if (user == null) return;
+
+      try {
+        // Check whether user has at least one post
+        final postsSnapshot = await _firestore
+            .collection('posts')
+            .where('creatorId', isEqualTo: user.uid)
+            .limit(1)
+            .get();
+
+        // Get user's visibility setting
+        final userSnapshot = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        bool hidePosts = false;
+
+        if (userSnapshot.exists) {
+          final data = userSnapshot.data();
+
+          hidePosts = data?['hidePosts'] ?? false;
+        }
+
+        if (!mounted) return;
+
+        setState(() {
+          _hasPosts = postsSnapshot.docs.isNotEmpty;
+          _hideMyPosts = hidePosts;
+        });
+      } catch (e) {
+        debugPrint("❌ Error loading post visibility settings: $e");
+      }
+    }
+
+    void _showAdminOptions(
+        BuildContext context,
+        Post post,
+        ) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(24),
+          ),
+        ),
+        builder: (sheetContext) {
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+
+                const SizedBox(height: 8),
+
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+
+                const SizedBox(height: 15),
+
+                Text(
+                  "Admin Options",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // ==============================
+                // EDIT RESTAURANT
+                // ==============================
+
+                ListTile(
+                  leading: const Icon(
+                    Icons.edit,
+                    color: Colors.blue,
+                  ),
+                  title: Text(
+                    "Edit Restaurant",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () {
+                    // Close admin options first
+                    Navigator.pop(sheetContext);
+
+                    // Open edit screen/modal
+                    _openAddPostModal(
+                      postToEdit: post,
+                    );
+                  },
+                ),
+
+                // ==============================
+                // DELETE RESTAURANT
+                // ==============================
+
+                ListTile(
+                  leading: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                  ),
+                  title: Text(
+                    "Delete Restaurant",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red,
+                    ),
+                  ),
+                  onTap: () {
+                    // Close admin options first
+                    Navigator.pop(sheetContext);
+
+                    // Show confirmation dialog
+                    _confirmAdminDeleteRestaurant(post);
+                  },
+                ),
+
+                const SizedBox(height: 10),
+              ],
+            ),
+          );
+        },
+      );
+    }
 
     void _filterPosts() {
 
@@ -76,7 +223,13 @@
             selectedCategory == "All" ||
                 content.contains(selectedCategory.toLowerCase());
 
-        return matchesSearch && matchesCategory;
+        final matchesProvider =
+            selectedProvider == 'all' ||
+                post.providerType == selectedProvider;
+
+        return matchesSearch &&
+            matchesCategory &&
+            matchesProvider;
 
       }).toList();
 
@@ -111,17 +264,31 @@
       });
       showOnlyMyPosts = widget.showOnlyMyPosts;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await Future.delayed(const Duration(milliseconds: 300));
-        if (!mounted) return;
-
         await _startLocationFlow();
-
-        if (!mounted) return;
-
-        await _requestNotificationPermission();
       });
 
       _listenUnreadChats();
+      _listenForFCMTokenRefresh();
+      _loadPostVisibilitySettings();
+    }
+    void _listenForFCMTokenRefresh() {
+      FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+        debugPrint("🔄 FCM token refreshed: $token");
+
+        final user = _auth.currentUser;
+
+        if (user == null || token.isEmpty) return;
+
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .set({
+          'fcmToken': token,
+          'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        debugPrint("✅ Refreshed FCM token saved");
+      });
     }
 
     @override
@@ -151,40 +318,51 @@
 
           _filterPosts();
         },
-        child: Container(
-          width: 80,
-          margin: const EdgeInsets.symmetric(horizontal: 5),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 48,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
+
               Container(
-                padding: const EdgeInsets.all(3),
+                padding: const EdgeInsets.all(1.5),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? const Color(0xFFF94449)
-                      : Colors.white,
+                  gradient: isSelected
+                      ? const LinearGradient(
+                    colors: [
+                      Color(0xFFF94449),
+                      Color(0xFFFF7A45),
+                    ],
+                  )
+                      : null,
+                  color: isSelected ? null : Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                    ),
-                  ],
+                  border: Border.all(
+                    color: isSelected
+                        ? Colors.transparent
+                        : Colors.grey.shade300,
+                  ),
                 ),
                 child: CircleAvatar(
-                  radius: 28,
+                  radius: 15,
                   backgroundColor: Colors.white,
                   backgroundImage: AssetImage(imagePath),
                 ),
               ),
-              const SizedBox(height: 6),
+
+              const SizedBox(height: 3),
+
               Text(
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 9,
                   fontWeight:
-                  isSelected ? FontWeight.bold : FontWeight.w500,
+                  isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: Colors.white,
                 ),
               ),
@@ -197,51 +375,121 @@
     Future<void> _requestNotificationPermission() async {
       final messaging = FirebaseMessaging.instance;
 
-      final settings = await messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-
-      debugPrint("🔔 HomePage permission status: ${settings.authorizationStatus}");
-
       try {
-        String? apnsToken = await messaging.getAPNSToken();
-        int retry = 0;
+        // Ask notification permission
+        final settings = await messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
 
-        while (apnsToken == null && retry < 3) {
-          await Future.delayed(const Duration(milliseconds: 800));
-          apnsToken = await messaging.getAPNSToken();
-          retry++;
-        }
+        debugPrint(
+          "🔔 Notification permission: "
+              "${settings.authorizationStatus}",
+        );
 
-        debugPrint("🍎 HomePage APNS token: $apnsToken");
+        // =========================================================
+        // ANDROID
+        // =========================================================
 
-        if (apnsToken == null) {
-          debugPrint(
-            "⚠️ APNS token not ready in HomePage, skipping FCM token fetch",
-          );
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          debugPrint("🤖 Android detected");
+
+          final token = await messaging.getToken();
+
+          debugPrint("🔑 Android FCM token: $token");
+
+          final user = _auth.currentUser;
+
+          if (user != null && token != null && token.isNotEmpty) {
+            await _firestore
+                .collection('users')
+                .doc(user.uid)
+                .set({
+              'fcmToken': token,
+              'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+
+            debugPrint("✅ Android FCM token saved");
+          }
+
           return;
         }
 
-        final token = await messaging.getToken();
-        debugPrint("🔑 HomePage FCM token: $token");
+        // =========================================================
+        // IOS
+        // =========================================================
 
-        final user = _auth.currentUser;
-        if (user != null && token != null) {
-          await _firestore.collection('users').doc(user.uid).set({
-            'fcmToken': token,
-          }, SetOptions(merge: true));
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          debugPrint("🍎 iOS detected");
+
+          String? apnsToken = await messaging.getAPNSToken();
+
+          int retry = 0;
+
+          while (apnsToken == null && retry < 10) {
+            debugPrint(
+              "⏳ Waiting for APNS token... attempt ${retry + 1}",
+            );
+
+            await Future.delayed(
+              const Duration(seconds: 1),
+            );
+
+            apnsToken = await messaging.getAPNSToken();
+
+            retry++;
+          }
+
+          debugPrint("🍎 APNS token: $apnsToken");
+
+          if (apnsToken == null) {
+            debugPrint(
+              "⚠️ APNS token still unavailable",
+            );
+            return;
+          }
+
+          final token = await messaging.getToken();
+
+          debugPrint("🔑 iOS FCM token: $token");
+
+          final user = _auth.currentUser;
+
+          if (user != null && token != null && token.isNotEmpty) {
+            await _firestore
+                .collection('users')
+                .doc(user.uid)
+                .set({
+              'fcmToken': token,
+              'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+
+            debugPrint("✅ iOS FCM token saved");
+          }
         }
       } catch (e, st) {
-        debugPrint("❌ HomePage notification setup failed: $e");
+        debugPrint("❌ Notification setup failed: $e");
         debugPrintStack(stackTrace: st);
       }
     }
 
     Future<void> _startLocationFlow() async {
       debugPrint("🚀 Starting location flow...");
+
+      if (!mounted) return;
+
+      setState(() {
+        loadingPosts = true;
+        userLat = null;
+        userLng = null;
+      });
+
       await _askLocationFirstTimeOnly();
+
+      if (!mounted) return;
+
       await _ensureLocationAndLoad();
     }
 
@@ -264,92 +512,255 @@
     }
 
     Future<void> _ensureLocationAndLoad() async {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      debugPrint("📍 Location service enabled: $serviceEnabled");
+      try {
+        // =========================================================
+        // 1. CHECK LOCATION SERVICE
+        // =========================================================
 
-      if (!serviceEnabled) {
-        await showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Location required'),
-            content: const Text(
-              'Please turn ON location to see nearby food posts.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await Geolocator.openLocationSettings();
-                },
-                child: const Text('Open settings'),
+        bool serviceEnabled =
+        await Geolocator.isLocationServiceEnabled();
+
+        debugPrint(
+          "📍 Location service enabled: $serviceEnabled",
+        );
+
+        if (!serviceEnabled) {
+          if (!mounted) return;
+
+          setState(() {
+            loadingPosts = false;
+            userLat = null;
+            userLng = null;
+          });
+
+          await showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Location required'),
+              content: const Text(
+                'Please turn ON location to see nearby food posts.',
               ),
-            ],
-          ),
-        );
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      debugPrint("📍 Current permission before load: $permission");
-
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        debugPrint("📍 Permission after second request: $permission");
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        await showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Permission required'),
-            content: const Text(
-              'Please allow location permission from settings to see nearby food.',
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await Geolocator.openLocationSettings();
+                  },
+                  child: const Text('Open settings'),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await Geolocator.openAppSettings();
-                },
-                child: const Text('Open settings'),
+          );
+
+          return;
+        }
+
+        // =========================================================
+        // 2. CHECK PERMISSION
+        // =========================================================
+
+        LocationPermission permission =
+        await Geolocator.checkPermission();
+
+        debugPrint(
+          "📍 Current permission: $permission",
+        );
+
+        if (permission == LocationPermission.denied) {
+          permission =
+          await Geolocator.requestPermission();
+
+          debugPrint(
+            "📍 Permission after request: $permission",
+          );
+        }
+
+        if (permission == LocationPermission.deniedForever) {
+          if (!mounted) return;
+
+          setState(() {
+            loadingPosts = false;
+            userLat = null;
+            userLng = null;
+          });
+
+          await showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Location permission required'),
+              content: const Text(
+                'Please allow location permission from app settings to see nearby food.',
               ),
-            ],
-          ),
-        );
-        return;
-      }
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await Geolocator.openAppSettings();
+                  },
+                  child: const Text('Open settings'),
+                ),
+              ],
+            ),
+          );
 
-      if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permission is required')),
-        );
-        return;
-      }
+          return;
+        }
 
-      await _initLocation();
-      _loadPosts();
+        if (permission == LocationPermission.denied) {
+          if (!mounted) return;
+
+          setState(() {
+            loadingPosts = false;
+            userLat = null;
+            userLng = null;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Location permission is required to show nearby food.',
+              ),
+            ),
+          );
+
+          return;
+        }
+
+        // =========================================================
+        // 3. GET REAL DEVICE LOCATION
+        // =========================================================
+
+        await _initLocation();
+
+        // =========================================================
+        // 4. IMPORTANT
+        // Only load posts if real location exists
+        // =========================================================
+
+        if (userLat == null || userLng == null) {
+          debugPrint(
+            "❌ Real device location unavailable. Posts will not load.",
+          );
+
+          if (!mounted) return;
+
+          setState(() {
+            loadingPosts = false;
+          });
+
+          return;
+        }
+
+        debugPrint(
+          "✅ Real location available: "
+              "$userLat, $userLng",
+        );
+
+        _loadPosts();
+
+      } catch (e, stackTrace) {
+        debugPrint(
+          "❌ _ensureLocationAndLoad ERROR: $e",
+        );
+
+        debugPrintStack(
+          stackTrace: stackTrace,
+        );
+
+        if (!mounted) return;
+
+        setState(() {
+          loadingPosts = false;
+          userLat = null;
+          userLng = null;
+        });
+      }
     }
 
     Future<void> _initLocation() async {
       debugPrint("📍 initLocation called");
 
-      final position = await LocationHelper.getCurrentLocation(context);
-      if (position != null) {
-        debugPrint(
-          "📍 User location: ${position.latitude}, ${position.longitude}",
+      try {
+        final position = await LocationHelper
+            .getCurrentLocation(context)
+            .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            debugPrint(
+              "⏰ Location request timed out",
+            );
+            return null;
+          },
         );
 
+        if (position == null) {
+          debugPrint(
+            "❌ Could not get device location",
+          );
+
+          if (!mounted) return;
+
+          setState(() {
+            userLat = null;
+            userLng = null;
+          });
+
+          return;
+        }
+
+        final lat = position.latitude;
+        final lng = position.longitude;
+
+        debugPrint(
+          "📍 REAL DEVICE LOCATION: $lat, $lng",
+        );
+
+        if (lat == 0 || lng == 0) {
+          debugPrint(
+            "❌ Invalid device coordinates",
+          );
+
+          if (!mounted) return;
+
+          setState(() {
+            userLat = null;
+            userLng = null;
+          });
+
+          return;
+        }
+
+        if (!mounted) return;
+
         setState(() {
-          userLat = position.latitude;
-          userLng = position.longitude;
+          userLat = lat;
+          userLng = lng;
         });
 
         await _updateUserLocationInFirestore(
-          position.latitude,
-          position.longitude,
+          lat,
+          lng,
         );
-      } else {
-        debugPrint("❌ LocationHelper returned null position");
+
+        debugPrint(
+          "✅ Real location saved successfully",
+        );
+
+      } catch (e, stackTrace) {
+        debugPrint(
+          "❌ _initLocation ERROR: $e",
+        );
+
+        debugPrintStack(
+          stackTrace: stackTrace,
+        );
+
+        if (!mounted) return;
+
+        setState(() {
+          userLat = null;
+          userLng = null;
+        });
       }
     }
 
@@ -361,6 +772,31 @@
           'latitude': lat,
           'longitude': lng,
         }, SetOptions(merge: true));
+      }
+    }
+
+    Future<bool> _isUserPostsHidden(String creatorId) async {
+      try {
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(creatorId)
+            .get();
+
+        if (!userDoc.exists) {
+          return false;
+        }
+
+        final data = userDoc.data();
+
+        return data?['hidePosts'] == true;
+      } catch (e) {
+        debugPrint(
+          "❌ Error checking post visibility for $creatorId: $e",
+        );
+
+        // If visibility cannot be checked,
+        // don't accidentally hide the post.
+        return false;
       }
     }
 
@@ -453,7 +889,6 @@
         _postsSubscription = _firestore
             .collection('posts')
             .orderBy('timestamp', descending: true)
-            .limit(50)
             .snapshots()
             .listen((snapshot) {
 
@@ -543,7 +978,26 @@
             continue;
           }
 
-          // 🚫 Delete expired posts
+          // =========================================================
+          // 🚫 CHECK CREATOR POST VISIBILITY
+          // =========================================================
+
+          final postsHidden = await _isUserPostsHidden(
+            post.creatorId,
+          );
+
+          if (postsHidden) {
+            debugPrint(
+              "🚫 Skipping hidden post: ${post.id}",
+            );
+
+            continue;
+          }
+
+          // =========================================================
+          // 🚫 DELETE EXPIRED POSTS
+          // =========================================================
+
           final expireAt = post.expireAt?.toDate();
 
           if (expireAt != null &&
@@ -556,6 +1010,10 @@
 
             continue;
           }
+
+          // =========================================================
+          // ✅ ADD ACTIVE POST
+          // =========================================================
 
           freshPosts.add(post);
         }
@@ -701,6 +1159,144 @@
       );
     }
 
+    void _showAdminPostOptions(Post post) {
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(20),
+          ),
+        ),
+        builder: (sheetContext) {
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+
+                const SizedBox(height: 10),
+
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+
+                const SizedBox(height: 15),
+
+                ListTile(
+                  leading: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                  ),
+                  title: const Text(
+                    'Delete Restaurant',
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+
+                    _confirmAdminDeleteRestaurant(post);
+                  },
+                ),
+
+                ListTile(
+                  leading: const Icon(
+                    Icons.close,
+                  ),
+                  title: const Text(
+                    'Cancel',
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                  },
+                ),
+
+                const SizedBox(height: 10),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    void _confirmAdminDeleteRestaurant(Post post) {
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text(
+              'Delete Restaurant?',
+            ),
+
+            content: Text(
+              'Are you sure you want to delete '
+                  '${post.creatorName} restaurant?',
+            ),
+
+            actions: [
+
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text(
+                  'Cancel',
+                ),
+              ),
+
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(dialogContext);
+
+                  await _deleteRestaurant(post);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text(
+                  'Delete',
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
+
+    Future<void> _deleteRestaurant(Post post) async {
+      try {
+        await FirebaseFirestore.instance
+            .collection('posts')
+            .doc(post.id)
+            .delete();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Restaurant deleted successfully',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to delete restaurant: $e',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+
     void _openAddPostModal({Post? postToEdit}) {
       showModalBottomSheet(
         isScrollControlled: true,
@@ -764,9 +1360,20 @@
 
     @override
     Widget build(BuildContext context) {
+      debugPrint("🏠 BUILD START");
       final user = _auth.currentUser;
 
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Color(0xFF022B52),
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+      );
+
+      debugPrint("🏠 BUILDING SCAFFOLD");
       return Scaffold(
+        extendBodyBehindAppBar: false,
         backgroundColor: const Color(0xFFFAFAFA),
         drawer: Sidebar(
           user: user,
@@ -823,115 +1430,265 @@
             }
           },
         ),
-        appBar: _showAppBar
-            ? PreferredSize(
+        appBar: PreferredSize(
           preferredSize: Size.fromHeight(
-            _showTopSection ? 95 : 0,
+            _showAppBar ? 82 : 0,
           ),
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            height: _showAppBar ? 82 : 0,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: [
                   Color(0xFF022B52),
                   Color(0xFF0A4D8C),
                 ],
               ),
+              borderRadius: BorderRadius.zero,
+              boxShadow: [],
             ),
-            child: SafeArea(
+            child: _showAppBar
+                ? Padding(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 8,
+              ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+
                     Builder(
                       builder: (context) => IconButton(
-                        icon: const Icon(Icons.menu,color: Colors.white),
+                        padding: EdgeInsets.zero,
+                        splashColor: Colors.transparent,
+                        highlightColor: Colors.transparent,
+                        constraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
+                        icon: const Icon(
+                          Icons.menu,
+                          color: Colors.white,
+                          size: 26,
+                        ),
                         onPressed: () {
                           Scaffold.of(context).openDrawer();
                         },
                       ),
                     ),
 
+                    const SizedBox(width: 18),
+
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                color: userLat != null
-                                    ? Colors.greenAccent
-                                    : Colors.redAccent,
-                                size: 22,
-                              ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
 
-                              const SizedBox(width: 6),
+                            Icon(
+                              Icons.location_on,
+                              color: userLat != null
+                                  ? Colors.greenAccent
+                                  : Colors.redAccent,
+                              size: 16,
+                            ),
 
-                              Text(
-                                userLat != null
-                                    ? "Location Detected"
-                                    : "Location Disabled",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            const SizedBox(width: 6),
+
+                            Text(
+                              userLat != null
+                                  ? "Location Active"
+                                  : "Location Off",
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+
+                          ],
+                        ),
                       ),
                     ),
 
-                    Stack(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: Image.asset(
-                            'assets/message.png',
-                            width: 28,
-                            height: 28,
-                            color: Colors.white,
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const InboxPage(),
-                              ),
-                            );
-                          },
-                        ),
 
-                        if (unreadChats > 0)
-                          Positioned(
-                            right: 4,
-                            top: 4,
-                            child: Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
+                        // ================= MESSAGE ICON =================
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 40,
+                                minHeight: 40,
                               ),
-                              child: Text(
-                                unreadChats.toString(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
+                              icon: Image.asset(
+                                'assets/message.png',
+                                width: 24,
+                                height: 24,
+                                color: Colors.white,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const InboxPage(),
+                                  ),
+                                );
+                              },
+                            ),
+
+                            if (unreadChats > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    unreadChats.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
+                          ],
+                        ),
+
+                        // ================= POST VISIBILITY =================
+                        // ================= POST VISIBILITY =================
+                        if (_hasPosts) ...[
+                          const SizedBox(width: 4),
+
+                          Tooltip(
+                            message: _hideMyPosts
+                                ? "Your posts are inactive"
+                                : "Your posts are active",
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+
+                                Icon(
+                                  _hideMyPosts
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: _hideMyPosts
+                                      ? Colors.black
+                                      : const Color(0xFFF94449),
+                                  size: 20,
+                                ),
+
+                                const SizedBox(width: 2),
+
+                                Transform.scale(
+                                  scale: 0.75,
+                                  child: Switch(
+                                    // IMPORTANT:
+                                    // Switch ON  = posts ACTIVE
+                                    // Switch OFF = posts INACTIVE
+                                    value: !_hideMyPosts,
+
+                                    activeColor: const Color(0xFFF94449),
+                                    activeTrackColor: Colors.white,
+
+                                    inactiveThumbColor: Colors.black,
+                                    inactiveTrackColor: Colors.black26,
+
+                                    onChanged: (isActive) async {
+
+                                      final user = _auth.currentUser;
+
+                                      if (user == null) return;
+
+                                      // Convert UI state to database state
+                                      final hidePosts = !isActive;
+
+                                      // Optimistic UI update
+                                      setState(() {
+                                        _hideMyPosts = hidePosts;
+                                      });
+
+                                      try {
+
+                                        await _firestore
+                                            .collection('users')
+                                            .doc(user.uid)
+                                            .set(
+                                          {
+                                            'hidePosts': hidePosts,
+                                          },
+                                          SetOptions(merge: true),
+                                        );
+
+                                        if (!mounted) return;
+
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            duration: const Duration(seconds: 2),
+                                            content: Text(
+                                              isActive
+                                                  ? "Your posts are now active"
+                                                  : "Your posts are now inactive",
+                                            ),
+                                          ),
+                                        );
+
+                                      } catch (e) {
+
+                                        debugPrint(
+                                          "❌ Error updating post visibility: $e",
+                                        );
+
+                                        if (!mounted) return;
+
+                                        // Revert UI if Firestore update fails
+                                        setState(() {
+                                          _hideMyPosts = !hidePosts;
+                                        });
+
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              "Unable to update post visibility",
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                        ],
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),
-            ),
+            )
+                : const SizedBox(),
           ),
-        ) : null,
-        body: SafeArea(
-          child: Column(
+        ),
+        body: Column(
             children: [
               Container(
                 decoration: const BoxDecoration(
@@ -947,86 +1704,251 @@
 
                     // Search Bar
                     Container(
-                      margin: const EdgeInsets.fromLTRB(16, 2, 16, 10),
-                      height: 55,
+                      margin: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                      height: 44,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: Colors.grey.shade200,
+                        ),
+                        boxShadow: [
                           BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 10,
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 15,
+                            offset: const Offset(0, 6),
                           ),
                         ],
                       ),
                       child: Row(
                         children: [
-                          const SizedBox(width: 15),
-                          const Icon(Icons.search),
+
+                          const SizedBox(width: 16),
+
+                          const Icon(
+                            Icons.search_rounded,
+                            color: Color(0xFFF94449),
+                            size: 21,
+                          ),
+
                           const SizedBox(width: 10),
 
                           Expanded(
                             child: TextField(
                               controller: _searchController,
                               onChanged: (value) {
+                                setState(() {});
                                 _filterPosts();
                               },
-                              decoration: const InputDecoration(
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
                                 border: InputBorder.none,
-                                hintText: "Search meals, chefs, food",
+                                hintText: "Search food, chef or cuisine",
+                                hintStyle: GoogleFonts.poppins(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ),
+
+                          if (_searchController.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () {
+                                _searchController.clear();
+                                _filterPosts();
+                              },
+                            ),
+
                         ],
                       ),
                     ),
 
                     // Category Slider
-                    Container(
-                      height: 95,
-                      margin: const EdgeInsets.only(
-                        left: 12,
-                        right: 12,
-                        bottom: 12,
-                      ),
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
+                    // Category Slider
+                    SizedBox(
+                      height: 52,
+                      child: Row(
                         children: [
-                          _categoryItem(
-                            "All",
-                            "assets/categories/all.png",
+
+                          // Fixed All Button
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: _categoryItem(
+                              "All",
+                              "assets/categories/all.png",
+                            ),
                           ),
-                          _categoryItem(
-                            "Burger",
-                            "assets/categories/burger.png",
-                          ),
-                          _categoryItem(
-                            "Pizza",
-                            "assets/categories/pizza.png",
-                          ),
-                          _categoryItem(
-                            "Samosa",
-                            "assets/categories/samosa.png",
-                          ),
-                          _categoryItem(
-                            "Biryani",
-                            "assets/categories/biryani.png",
-                          ),
-                          _categoryItem(
-                            "Chicken",
-                            "assets/categories/chicken.png",
-                          ),
-                          _categoryItem(
-                            "Vada Pav",
-                            "assets/categories/vadapav.png",
-                          ),
-                          _categoryItem(
-                            "Tiffin",
-                            "assets/categories/tiffin.png",
+
+
+                          // Scrollable Categories
+                          Expanded(
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.only(left: 5),
+                              children: [
+
+                                _categoryItem(
+                                  "Burger",
+                                  "assets/categories/burger.png",
+                                ),
+
+                                _categoryItem(
+                                  "Pizza",
+                                  "assets/categories/pizza.png",
+                                ),
+
+                                _categoryItem(
+                                  "Momos",
+                                  "assets/categories/momos.png",
+                                ),
+
+                                _categoryItem(
+                                  "Samosa",
+                                  "assets/categories/samosa.png",
+                                ),
+
+                                _categoryItem(
+                                  "Biryani",
+                                  "assets/categories/biryani.png",
+                                ),
+
+                                _categoryItem(
+                                  "Chicken",
+                                  "assets/categories/chicken.png",
+                                ),
+
+                                _categoryItem(
+                                  "Vada Pav",
+                                  "assets/categories/vadapav.png",
+                                ),
+
+                                _categoryItem(
+                                  "Tiffin",
+                                  "assets/categories/tiffin.png",
+                                ),
+
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 4),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        height: 34,
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+
+                            // ================= HOME CHEF =================
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedProvider = 'homeChef';
+                                  });
+
+                                  _filterPosts();
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: selectedProvider == 'homeChef'
+                                        ? const Color(0xFFF94449)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(9),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Text(
+                                        '👨‍🍳',
+                                        style: TextStyle(fontSize: 13),
+                                      ),
+
+                                      const SizedBox(width: 5),
+
+                                      Text(
+                                        'Home Chef',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: selectedProvider == 'homeChef'
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 3),
+
+                            // ================= RESTAURANT =================
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedProvider = 'restaurant';
+                                  });
+
+                                  _filterPosts();
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: selectedProvider == 'restaurant'
+                                        ? const Color(0xFFF94449)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(9),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Text(
+                                        '🍽️',
+                                        style: TextStyle(fontSize: 13),
+                                      ),
+
+                                      const SizedBox(width: 5),
+
+                                      Text(
+                                        'Restaurant',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: selectedProvider == 'restaurant'
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
                   ],
                 ),
               ),
@@ -1055,6 +1977,51 @@
                               final expireText = post.expireAt != null
                                   ? _formatTime(post.expireAt!.toDate())
                                   : null;
+                              if (post.providerType == "restaurant") {
+                                return RestaurantCard(
+                                  post: post,
+                                  isOwnPost: isOwnPost,
+                                  searchText: searchedKeyword,
+                                  onOptionsPressed: () {
+                                    _showPostOptions(post);
+                                  },
+                                  onViewPressed: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (_) => DraggableScrollableSheet(
+                                        initialChildSize: 0.85,
+                                        minChildSize: 0.4,
+                                        maxChildSize: 0.95,
+                                        builder: (context, scrollController) {
+                                          return PostDetailPage(
+                                            postId: post.id,
+                                            scrollController: scrollController,
+                                            searchText: searchedKeyword,
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                  onRatingPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ChefReviewsScreen(
+                                          chefId: post.creatorId,
+                                          chefName: post.creatorName,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  onChatPressed: () => _openChatWithChef(post),
+                                  onAdminOptionsPressed: () {
+                                    _showAdminOptions(context, post);
+                                  },
+
+                                );
+                              }
 
                               return PostCard(
                                 post: post,
@@ -1089,14 +2056,14 @@
               ),
             ],
           ),
-        ),
         bottomNavigationBar: SafeArea(
           top: false,
           child: Container(
-            height: 65, // fixed height
-            margin: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
+            height: 70, // fixed height
+            margin: const EdgeInsets.only(
+              left: 12,
+              right: 12,
+              bottom: 0,
             ),
             decoration: BoxDecoration(
               color: const Color(0xFFFFF8E1),

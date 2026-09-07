@@ -1,8 +1,19 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Load signing properties from android/key.properties
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -30,10 +41,10 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = "upload"
-            keyPassword = "Nearby@123"
-            storePassword = "Nearby@123"
-            storeFile = file("C:/Users/visha/upload-keystore.jks")
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storePassword = keystoreProperties["storePassword"] as String?
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
         }
     }
 
@@ -49,6 +60,5 @@ flutter {
 }
 
 dependencies {
-    // ✅ Desugaring library
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

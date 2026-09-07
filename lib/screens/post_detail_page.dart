@@ -398,34 +398,115 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   ),
 
                   // Creator Name
-                  Text(
-                    creatorName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  // ================= CHEF HEADER =================
 
-                  // Time
-                  if (timestamp != null)
-                    Padding(
-                      padding:
-                      const EdgeInsets.only(top: 2),
-                      child: Text(
-                        _formatTime(timestamp),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
+                  Row(
+                    children: [
+
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: const Color(0xFFF94449),
+                        child: Text(
+                          creatorName.isNotEmpty
+                              ? creatorName[0].toUpperCase()
+                              : "U",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
                         ),
                       ),
-                    ),
+
+
+                      const SizedBox(width: 10),
+
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+
+                            Row(
+                              children: [
+
+                                Flexible(
+                                  child: Text(
+                                    creatorName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(width: 5),
+
+                                const Icon(
+                                  Icons.verified,
+                                  size: 16,
+                                  color: Color(0xFFF94449),
+                                ),
+                              ],
+                            ),
+
+
+                            const SizedBox(height: 5),
+
+
+                            if (timestamp != null)
+                              Text(
+                                _formatTime(timestamp),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+
+                          ],
+                        ),
+                      ),
+
+                    ],
+                  ),
 
                   const SizedBox(height: 10),
 
                   // Content
-                  _highlightText(content),
+                  // ================= MENU CONTENT =================
 
-                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8F7),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
+                        const Icon(
+                          Icons.restaurant_menu,
+                          color: Color(0xFFF94449),
+                          size: 20,
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        Expanded(
+                          child: _highlightText(content),
+                        ),
+                      ],
+                    ),
+                  ),
+
+
+                  const SizedBox(height: 14),
 
                   // Buttons
                   Row(
@@ -437,7 +518,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                             child: ElevatedButton.icon(
                               onPressed: _openChat,
                               icon: const Icon(Icons.chat_bubble_outline),
-                              label: const Text("Chat with Chef"),
+                              label: const Text("Chat"),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFF94449),
                                 foregroundColor: Colors.white,
@@ -478,17 +559,56 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   const SizedBox(height: 12),
 
                   // Distance
-                  Text(
-                    (postLat != null &&
-                        postLng != null &&
-                        postLat != 0 &&
-                        myLat != null &&
-                        myLng != null)
-                        ? "📍 ${_distanceInKm(myLat!, myLng!, postLat!, postLng!).toStringAsFixed(2)} km away"
-                        : "📍 Distance unavailable",
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
+                  // ================= DISTANCE BADGE =================
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+
+                      children: [
+
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: Colors.blue,
+                        ),
+
+                        const SizedBox(width: 6),
+
+
+                        Text(
+                          (postLat != null &&
+                              postLng != null &&
+                              postLat != 0 &&
+                              myLat != null &&
+                              myLng != null)
+
+                              ? "${_distanceInKm(
+                            myLat!,
+                            myLng!,
+                            postLat!,
+                            postLng!,
+                          ).toStringAsFixed(2)} km away"
+
+                              : "Distance unavailable",
+
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 

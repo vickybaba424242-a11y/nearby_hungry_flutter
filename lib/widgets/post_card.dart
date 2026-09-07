@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/post.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../screens/chef_reviews_screen.dart';
 
 class PostCard extends StatelessWidget {
   final Post post;
@@ -34,6 +37,10 @@ class PostCard extends StatelessWidget {
 
     if (menu.contains('biryani')) {
       images.add('assets/images/biryani.jpg');
+    }
+
+    if (menu.contains('chicken biryani')) {
+      images.add('assets/images/chickenbiryani.jpg');
     }
 
     if (menu.contains('pizza')) {
@@ -207,6 +214,11 @@ class PostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final creatorName = isOwnPost ? "You" : (post.creatorName ?? "Nearby User");
 
+    final user = FirebaseAuth.instance.currentUser;
+
+    final bool isAdmin =
+        user?.email?.toLowerCase() == 'nearbyhungry@gmail.com';
+
     final menuImages = getMenuImages(post.text);
 
     return Container(
@@ -229,59 +241,205 @@ class PostCard extends StatelessWidget {
           children: [
 
             // ---------------- Header ----------------
+            // ---------------- Header ----------------
             Row(
               children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: const Color(0xFFF94449),
-                  child: Text(
-                    creatorName.isNotEmpty ? creatorName[0].toUpperCase() : "U",
-                    style: const TextStyle(color: Colors.white),
+
+                // Chef Avatar
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFF94449),
+                  ),
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: Colors.white,
+                    child: Text(
+                      creatorName.isNotEmpty
+                          ? creatorName[0].toUpperCase()
+                          : "U",
+                      style: const TextStyle(
+                        color: Color(0xFFF94449),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
 
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
 
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        creatorName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
+
+                      Row(
+                        children: [
+
+                          Flexible(
+                            child: Text(
+                              creatorName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 4),
+
+                          // Verified Badge
+                          const Icon(
+                            Icons.verified,
+                            color: Color(0xFFF94449),
+                            size: 16,
+                          ),
+
+                          const SizedBox(width: 8),
+
+
+                          // Rating
+                          StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(post.creatorId)
+                                .snapshots(),
+
+                            builder: (context, snapshot) {
+
+                              double rating = 0;
+                              int totalRatings = 0;
+
+
+                              if (snapshot.hasData &&
+                                  snapshot.data!.exists) {
+
+                                final data =
+                                snapshot.data!.data()
+                                as Map<String, dynamic>;
+
+                                rating =
+                                    (data['rating'] ?? 0).toDouble();
+
+                                totalRatings =
+                                    data['totalRatings'] ?? 0;
+                              }
+
+
+                              return GestureDetector(
+                                onTap: () {
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ChefReviewsScreen(
+                                        chefId: post.creatorId,
+                                        chefName: post.creatorName ?? "Chef",
+                                      ),
+                                    ),
+                                  );
+
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
+
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+
+                                      const Icon(
+                                        Icons.star,
+                                        size: 13,
+                                        color: Colors.amber,
+                                      ),
+
+                                      const SizedBox(width: 3),
+
+                                      Text(
+                                        rating.toStringAsFixed(1),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+
+                                      Text(
+                                        " ($totalRatings) ",
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
 
-                      const SizedBox(height: 3),
 
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF94449).withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          isOwnPost ? "Your Post" : "Chef",
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFFF94449),
+                      const SizedBox(height: 5),
+
+                      Wrap(
+                        spacing: 6,
+                        children: [
+
+                          // Chef Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF94449)
+                                  .withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              isOwnPost ? "Your Post" : "HomeChef",
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFFF94449),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
                 ),
 
-                // only show menu for own post
-                if (isOwnPost)
-                  IconButton(
-                    onPressed: onOptionsPressed,
-                    icon: const Icon(Icons.more_horiz),
+
+                // More button
+                // More button
+                if (isOwnPost || isAdmin)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: onOptionsPressed,
+                      icon: const Icon(
+                        Icons.more_horiz,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -289,76 +447,242 @@ class PostCard extends StatelessWidget {
             const SizedBox(height: 10),
 
 // ---------------- Food Images ----------------
+            // ---------------- Premium Food Images ----------------
             if (menuImages.isNotEmpty) ...[
-              CarouselSlider(
-                options: CarouselOptions(
-                  height: 180,
-                  autoPlay: menuImages.length > 1,
-                  autoPlayInterval: const Duration(seconds: 3),
-                  enlargeCenterPage: true,
-                  viewportFraction: 0.92,
-                ),
-                items: menuImages.map((imagePath) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      imagePath,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: SizedBox(
+                  height: 160,
+                  child: CarouselSlider(
+                    options: CarouselOptions(
+                      height: 160,
+                      viewportFraction: 1,
+                      autoPlay: menuImages.length > 1,
+                      autoPlayInterval: const Duration(seconds: 3),
+                      enlargeCenterPage: false,
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-            ],
+                    items: menuImages.map((imagePath) {
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
 
-            const SizedBox(height: 12),
+                          // Food Image
+                          Image.asset(
+                            imagePath,
+                            fit: BoxFit.cover,
+                          ),
 
- // ---------------- Content ----------------
-            highlightText(
-              post.text,
-              searchText,
-            ),
+                          // Dark Gradient
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withOpacity(.55),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
 
-            const SizedBox(height: 10),
+                          // Fresh Today Badge
+                          Positioned(
+                            left: 12,
+                            top: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.eco,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    "Fresh Today",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
 
-            // ---------------- Meta ----------------
-            Row(
-              children: [
-                const Icon(Icons.access_time,
-                    size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  timeText,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
+                          // Bottom Text
+                          Positioned(
+                            left: 16,
+                            bottom: 18,
+                            right: 16,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+
+                                Text(
+                                  creatorName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 4),
+
+                                const Text(
+                                  "Delicious Homemade Food",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
                   ),
                 ),
+              ),
 
-                if (isOwnPost && post.views != null) ...[
-                  const SizedBox(width: 12),
-                  const Icon(Icons.visibility,
-                      size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    "${post.views}",
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
+              const SizedBox(height: 8),
+            ],
+
+            // ---------------- Today's Menu ----------------
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8F7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  const Icon(
+                    Icons.restaurant_menu,
+                    size: 18,
+                    color: Color(0xFFF94449),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  Expanded(
+                    child: highlightText(
+                      post.text,
+                      searchText,
                     ),
                   ),
                 ],
-              ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ---------------- Meta ----------------
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+
+              child: Row(
+                children: [
+
+                  const Icon(
+                    Icons.schedule,
+                    size: 16,
+                    color: Color(0xFFF94449),
+                  ),
+
+                  const SizedBox(width: 6),
+
+                  Text(
+                    timeText,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  if (isOwnPost && post.views != null) ...[
+                    const Icon(
+                      Icons.visibility_outlined,
+                      size: 16,
+                      color: Color(0xFFF94449),
+                    ),
+
+                    const SizedBox(width: 5),
+
+                    Text(
+                      "${post.views}",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
 
             if (expireText != null) ...[
               const SizedBox(height: 6),
-              Text(
-                "⏳ Expires in $expireText",
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.redAccent,
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+
+                    const Icon(
+                      Icons.timer,
+                      color: Colors.red,
+                      size: 16,
+                    ),
+
+                    const SizedBox(width: 6),
+
+                    Expanded(
+                      child: Text(
+                        "Available for another $expireText",
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -367,51 +691,46 @@ class PostCard extends StatelessWidget {
 
             // ---------------- CTA ----------------
             // ---------------- Actions ----------------
-            Column(
+            Row(
               children: [
 
-                // View Full Menu (Filled)
-                SizedBox(
-                  width: double.infinity,
+                Expanded(
                   child: ElevatedButton.icon(
                     onPressed: onViewPressed,
-                    icon: const Icon(Icons.restaurant_menu),
-                    label: const Text("View Full Menu"),
+                    icon: const Icon(Icons.restaurant_menu,size:18),
+                    label: const Text("Menu"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFF94449),
                       foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      minimumSize: const Size.fromHeight(44),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 8),
+                if (!isOwnPost) ...[
+                  const SizedBox(width: 10),
 
-                // Chat with Chef (Outlined)
-                if (!isOwnPost)
-                  SizedBox(
-                    width: double.infinity,
+                  Expanded(
                     child: OutlinedButton.icon(
                       onPressed: onChatPressed,
-                      icon: const Icon(Icons.chat_bubble_outline),
-                      label: const Text("Chat with Chef"),
+                      icon: const Icon(Icons.chat,size:18),
+                      label: const Text("Chat"),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFFF94449),
+                        minimumSize: const Size.fromHeight(44),
                         side: const BorderSide(
                           color: Color(0xFFF94449),
-                          width: 1.5,
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
                   ),
+                ],
               ],
             ),
           ],
