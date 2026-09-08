@@ -1432,13 +1432,13 @@
         ),
         appBar: PreferredSize(
           preferredSize: Size.fromHeight(
-            _showAppBar ? 82 : 0,
+            _showAppBar ? 70 : 0,
           ),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 400),
-            height: _showAppBar ? 82 : 0,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
+            height: _showAppBar ? 70 : 0,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
@@ -1446,241 +1446,251 @@
                   Color(0xFF0A4D8C),
                 ],
               ),
-              borderRadius: BorderRadius.zero,
-              boxShadow: [],
             ),
             child: _showAppBar
-                ? Padding(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 8,
-              ),
+                ? SafeArea(
+              bottom: false,
               child: Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: SizedBox(
+                  height: 56,
+                  child: Row(
+                    children: [
 
-                    Builder(
-                      builder: (context) => IconButton(
-                        padding: EdgeInsets.zero,
-                        splashColor: Colors.transparent,
-                        highlightColor: Colors.transparent,
-                        constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
-                        ),
-                        icon: const Icon(
-                          Icons.menu,
-                          color: Colors.white,
-                          size: 26,
-                        ),
-                        onPressed: () {
-                          Scaffold.of(context).openDrawer();
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(width: 2),
-
-                    Expanded(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            color: userLat != null
-                                ? Colors.greenAccent
-                                : Colors.redAccent,
-                            size: 20,
-                          ),
-
-                          const SizedBox(width: 4),
-
-                          Flexible(
-                            child: Text(
-                              userLat != null
-                                  ? "Location On"
-                                  : "Location Off",
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
+                      // ================= MENU =================
+                      Builder(
+                        builder: (context) => SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
+                            icon: const Icon(
+                              Icons.menu,
+                              color: Colors.white,
+                              size: 26,
                             ),
+                            onPressed: () {
+                              Scaffold.of(context).openDrawer();
+                            },
                           ),
-                        ],
+                        ),
                       ),
-                    ),
 
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+                      const SizedBox(width: 4),
 
-                        // ================= MESSAGE ICON =================
-                        Stack(
-                          alignment: Alignment.center,
+                      // ================= LOCATION =================
+                      Expanded(
+                        child: Row(
                           children: [
 
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 36,
-                                minHeight: 36,
-                              ),
-                              icon: Image.asset(
-                                'assets/message.png',
-                                width: 22,
-                                height: 22,
-                                color: Colors.white,
-                              ),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const InboxPage(),
-                                  ),
-                                );
-                              },
+                            Icon(
+                              Icons.location_on,
+                              color: userLat != null
+                                  ? Colors.greenAccent
+                                  : Colors.redAccent,
+                              size: 19,
                             ),
 
-                            if (unreadChats > 0)
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 3,
-                                  ),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    unreadChats.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                            const SizedBox(width: 4),
+
+                            Flexible(
+                              child: Text(
+                                userLat != null
+                                    ? "Location On"
+                                    : "Location Off",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
+                            ),
                           ],
                         ),
+                      ),
 
-                        // ================= POST VISIBILITY =================
-                        // ================= POST VISIBILITY =================
-                        if (_hasPosts) ...[
-                          const SizedBox(width: 4),
+                      // ================= RIGHT SIDE =================
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
 
-                          Tooltip(
-                            message: _hideMyPosts
-                                ? "Your posts are inactive"
-                                : "Your posts are active",
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                          // ================= MESSAGE =================
+                          SizedBox(
+                            width: 42,
+                            height: 42,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
                               children: [
 
-                                Icon(
-                                  _hideMyPosts
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
-                                  color: _hideMyPosts
-                                      ? Colors.black
-                                      : const Color(0xFFF94449),
-                                  size: 20,
-                                ),
-
-                                const SizedBox(width: 2),
-
-                                Transform.scale(
-                                  scale: 0.65,
-                                  child: Switch(
-                                    // IMPORTANT:
-                                    // Switch ON  = posts ACTIVE
-                                    // Switch OFF = posts INACTIVE
-                                    value: !_hideMyPosts,
-
-                                    activeColor: const Color(0xFFF94449),
-                                    activeTrackColor: Colors.white,
-
-                                    inactiveThumbColor: Colors.black,
-                                    inactiveTrackColor: Colors.black26,
-
-                                    onChanged: (isActive) async {
-
-                                      final user = _auth.currentUser;
-
-                                      if (user == null) return;
-
-                                      // Convert UI state to database state
-                                      final hidePosts = !isActive;
-
-                                      // Optimistic UI update
-                                      setState(() {
-                                        _hideMyPosts = hidePosts;
-                                      });
-
-                                      try {
-
-                                        await _firestore
-                                            .collection('users')
-                                            .doc(user.uid)
-                                            .set(
-                                          {
-                                            'hidePosts': hidePosts,
-                                          },
-                                          SetOptions(merge: true),
-                                        );
-
-                                        if (!mounted) return;
-
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            duration: const Duration(seconds: 2),
-                                            content: Text(
-                                              isActive
-                                                  ? "Your posts are now active"
-                                                  : "Your posts are now inactive",
-                                            ),
-                                          ),
-                                        );
-
-                                      } catch (e) {
-
-                                        debugPrint(
-                                          "❌ Error updating post visibility: $e",
-                                        );
-
-                                        if (!mounted) return;
-
-                                        // Revert UI if Firestore update fails
-                                        setState(() {
-                                          _hideMyPosts = !hidePosts;
-                                        });
-
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              "Unable to update post visibility",
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 42,
+                                    minHeight: 42,
                                   ),
+                                  icon: Image.asset(
+                                    'assets/message.png',
+                                    width: 21,
+                                    height: 21,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const InboxPage(),
+                                      ),
+                                    );
+                                  },
                                 ),
+
+                                if (unreadChats > 0)
+                                  Positioned(
+                                    right: -1,
+                                    top: -1,
+                                    child: Container(
+                                      constraints: const BoxConstraints(
+                                        minWidth: 17,
+                                        minHeight: 17,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 1,
+                                      ),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        unreadChats > 9
+                                            ? '9+'
+                                            : unreadChats.toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
+
+                          // ================= VISIBILITY =================
+                          if (_hasPosts) ...[
+                            const SizedBox(width: 2),
+
+                            Tooltip(
+                              message: _hideMyPosts
+                                  ? "Your posts are inactive"
+                                  : "Your posts are active",
+                              child: SizedBox(
+                                height: 42,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+
+                                    Icon(
+                                      _hideMyPosts
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      color: _hideMyPosts
+                                          ? Colors.black
+                                          : const Color(0xFFF94449),
+                                      size: 19,
+                                    ),
+
+                                    Transform.scale(
+                                      scale: 0.60,
+                                      child: Switch(
+                                        value: !_hideMyPosts,
+
+                                        activeColor:
+                                        const Color(0xFFF94449),
+                                        activeTrackColor: Colors.white,
+
+                                        inactiveThumbColor: Colors.black,
+                                        inactiveTrackColor:
+                                        Colors.black26,
+
+                                        onChanged: (isActive) async {
+                                          final user =
+                                              _auth.currentUser;
+
+                                          if (user == null) return;
+
+                                          final hidePosts = !isActive;
+
+                                          setState(() {
+                                            _hideMyPosts = hidePosts;
+                                          });
+
+                                          try {
+                                            await _firestore
+                                                .collection('users')
+                                                .doc(user.uid)
+                                                .set(
+                                              {
+                                                'hidePosts': hidePosts,
+                                              },
+                                              SetOptions(merge: true),
+                                            );
+
+                                            if (!mounted) return;
+
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                duration:
+                                                const Duration(
+                                                  seconds: 2,
+                                                ),
+                                                content: Text(
+                                                  isActive
+                                                      ? "Your posts are now active"
+                                                      : "Your posts are now inactive",
+                                                ),
+                                              ),
+                                            );
+                                          } catch (e) {
+                                            debugPrint(
+                                              "❌ Error updating post visibility: $e",
+                                            );
+
+                                            if (!mounted) return;
+
+                                            setState(() {
+                                              _hideMyPosts = !hidePosts;
+                                            });
+
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Unable to update post visibility",
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )
@@ -1701,11 +1711,11 @@
                 child: Column(
                   children: [
 
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
 
                     // Search Bar
                     Container(
-                      margin: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                      margin: const EdgeInsets.fromLTRB(16, 2, 16, 6),
                       height: 44,
                       decoration: BoxDecoration(
                         color: Colors.white,
