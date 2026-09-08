@@ -1361,6 +1361,7 @@
     @override
     Widget build(BuildContext context) {
       debugPrint("🏠 BUILD START");
+
       final user = _auth.currentUser;
 
       SystemChrome.setSystemUIOverlayStyle(
@@ -1372,9 +1373,15 @@
       );
 
       debugPrint("🏠 BUILDING SCAFFOLD");
+
       return Scaffold(
         extendBodyBehindAppBar: false,
         backgroundColor: const Color(0xFFFAFAFA),
+
+        // =========================================================
+        // DRAWER
+        // =========================================================
+
         drawer: Sidebar(
           user: user,
           selectedKey: showOnlyMyPosts ? 'my_posts' : 'home',
@@ -1384,23 +1391,25 @@
                 setState(() => showOnlyMyPosts = false);
                 _loadPosts();
                 break;
+
               case 'my_posts':
                 setState(() => showOnlyMyPosts = true);
                 _loadPosts();
                 break;
-              case 'customers':
 
+              case 'customers':
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => const CustomersScreen(),
                   ),
                 );
-
                 break;
+
               case 'instagram':
                 _openInstagram();
                 break;
+
               case 'rewards_program':
                 Navigator.push(
                   context,
@@ -1418,293 +1427,329 @@
                   ),
                 );
                 break;
+
               case 'share':
                 _shareApp();
                 break;
+
               case 'logout':
                 _logout();
                 break;
-              case 'delete_account':   // 🔥 ADD THIS
+
+              case 'delete_account':
                 _confirmDeleteAccount();
                 break;
             }
           },
         ),
-        appBar: PreferredSize(
-          preferredSize: Size.fromHeight(
-            _showAppBar ? 70 : 0,
-          ),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            height: _showAppBar ? 70 : 0,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF022B52),
-                  Color(0xFF0A4D8C),
-                ],
-              ),
-            ),
-            child: _showAppBar
-                ? SafeArea(
-              bottom: false,
-              child: SizedBox(
-                height: 56,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Row(
-                    children: [
-                      // ================= MENU =================
-                      Builder(
-                        builder: (context) => SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            splashColor: Colors.transparent,
-                            highlightColor: Colors.transparent,
-                            icon: const Icon(
-                              Icons.menu,
-                              color: Colors.white,
-                              size: 26,
-                            ),
-                            onPressed: () {
-                              Scaffold.of(context).openDrawer();
-                            },
-                          ),
-                        ),
-                      ),
 
-                      const SizedBox(width: 4),
+        // =========================================================
+        // BODY
+        // =========================================================
 
-                      // ================= LOCATION =================
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              color: userLat != null
-                                  ? Colors.greenAccent
-                                  : Colors.redAccent,
-                              size: 19,
-                            ),
-
-                            const SizedBox(width: 4),
-
-                            Flexible(
-                              child: Text(
-                                userLat != null
-                                    ? "Location On"
-                                    : "Location Off",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // ================= RIGHT SIDE =================
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // MESSAGE
-                          SizedBox(
-                            width: 42,
-                            height: 42,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              alignment: Alignment.center,
-                              children: [
-                                IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 42,
-                                    minHeight: 42,
-                                  ),
-                                  icon: Image.asset(
-                                    'assets/message.png',
-                                    width: 21,
-                                    height: 21,
-                                    color: Colors.white,
-                                  ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const InboxPage(),
-                                      ),
-                                    );
-                                  },
-                                ),
-
-                                if (unreadChats > 0)
-                                  Positioned(
-                                    right: -1,
-                                    top: -1,
-                                    child: Container(
-                                      constraints: const BoxConstraints(
-                                        minWidth: 17,
-                                        minHeight: 17,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                        vertical: 1,
-                                      ),
-                                      decoration: const BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        unreadChats > 9
-                                            ? '9+'
-                                            : unreadChats.toString(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-
-                          // VISIBILITY
-                          if (_hasPosts) ...[
-                            const SizedBox(width: 2),
-
-                            Tooltip(
-                              message: _hideMyPosts
-                                  ? "Your posts are inactive"
-                                  : "Your posts are active",
-                              child: SizedBox(
-                                height: 42,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _hideMyPosts
-                                          ? Icons.visibility_off_outlined
-                                          : Icons.visibility_outlined,
-                                      color: _hideMyPosts
-                                          ? Colors.black
-                                          : const Color(0xFFF94449),
-                                      size: 19,
-                                    ),
-
-                                    Transform.scale(
-                                      scale: 0.60,
-                                      child: Switch(
-                                        value: !_hideMyPosts,
-                                        activeColor:
-                                        const Color(0xFFF94449),
-                                        activeTrackColor: Colors.white,
-                                        inactiveThumbColor: Colors.black,
-                                        inactiveTrackColor: Colors.black26,
-                                        onChanged: (isActive) async {
-                                          final user = _auth.currentUser;
-
-                                          if (user == null) return;
-
-                                          final hidePosts = !isActive;
-
-                                          setState(() {
-                                            _hideMyPosts = hidePosts;
-                                          });
-
-                                          try {
-                                            await _firestore
-                                                .collection('users')
-                                                .doc(user.uid)
-                                                .set(
-                                              {
-                                                'hidePosts': hidePosts,
-                                              },
-                                              SetOptions(merge: true),
-                                            );
-
-                                            if (!mounted) return;
-
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                duration:
-                                                const Duration(seconds: 2),
-                                                content: Text(
-                                                  isActive
-                                                      ? "Your posts are now active"
-                                                      : "Your posts are now inactive",
-                                                ),
-                                              ),
-                                            );
-                                          } catch (e) {
-                                            debugPrint(
-                                              "❌ Error updating post visibility: $e",
-                                            );
-
-                                            if (!mounted) return;
-
-                                            setState(() {
-                                              _hideMyPosts = !hidePosts;
-                                            });
-
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  "Unable to update post visibility",
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-                : const SizedBox(),
-          ),
-        ),
         body: Column(
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF022B52),
-                      Color(0xFF0A4D8C),
-                    ],
-                  ),
+          children: [
+
+            // =======================================================
+            // TOP BLUE SECTION
+            // =======================================================
+
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF022B52),
+                    Color(0xFF0A4D8C),
+                  ],
                 ),
+              ),
+
+              // =====================================================
+              // SAFE AREA
+              // Android + iOS status bar handled automatically
+              // =====================================================
+
+              child: SafeArea(
+                top: true,
+                bottom: false,
+
                 child: Column(
                   children: [
 
-                    const SizedBox(height: 4),
+                    // =================================================
+                    // HEADER
+                    // =================================================
+                    //
+                    // IMPORTANT:
+                    // No SizedBox / margin between header and search.
+                    //
+                    // SafeArea handles the status bar.
+                    // 56 is the actual header height.
+                    // =================================================
 
-                    // Search Bar
+                    ClipRect(
+                      child: AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        alignment: Alignment.topCenter,
+
+                        child: _showAppBar
+                            ? SizedBox(
+                          height: 56,
+
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                            ),
+
+                            child: Row(
+                              children: [
+
+                                // =================================
+                                // HAMBURGER MENU
+                                // =================================
+
+                                SizedBox(
+                                  width: 44,
+                                  height: 44,
+                                  child: Builder(
+                                    builder: (context) {
+                                      return Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius:
+                                          BorderRadius.circular(22),
+                                          onTap: () {
+                                            Scaffold.of(context)
+                                                .openDrawer();
+                                          },
+                                          child: const Icon(
+                                            Icons.menu_rounded,
+                                            color: Colors.white,
+                                            size: 27,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+
+                                // =================================
+                                // LOCATION
+                                // =================================
+
+                                Expanded(
+                                  child: Row(
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                    children: [
+
+                                      Icon(
+                                        userLat != null &&
+                                            userLng != null
+                                            ? Icons.location_on
+                                            : Icons.location_off,
+                                        color: userLat != null &&
+                                            userLng != null
+                                            ? Colors.greenAccent
+                                            : Colors.redAccent,
+                                        size: 20,
+                                      ),
+
+                                      const SizedBox(width: 5),
+
+                                      Text(
+                                        userLat != null &&
+                                            userLng != null
+                                            ? "Location On"
+                                            : "Location Off",
+                                        maxLines: 1,
+                                        overflow:
+                                        TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight:
+                                          FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // =================================
+                                // MESSAGE / INBOX
+                                // =================================
+
+                                SizedBox(
+                                  width: 42,
+                                  height: 44,
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+
+                                      Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius:
+                                          BorderRadius.circular(22),
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                const InboxPage(),
+                                              ),
+                                            );
+                                          },
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons
+                                                  .arrow_forward_rounded,
+                                              color: Colors.white,
+                                              size: 27,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+
+                                      // =================================
+                                      // UNREAD BADGE
+                                      // =================================
+
+                                      if (unreadChats > 0)
+                                        Positioned(
+                                          right: 0,
+                                          top: 3,
+                                          child: Container(
+                                            constraints:
+                                            const BoxConstraints(
+                                              minWidth: 17,
+                                              minHeight: 17,
+                                            ),
+                                            padding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
+                                            decoration:
+                                            BoxDecoration(
+                                              color: Colors.red,
+                                              borderRadius:
+                                              BorderRadius.circular(
+                                                10,
+                                              ),
+                                              border: Border.all(
+                                                color: const Color(
+                                                  0xFF0A4D8C,
+                                                ),
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              unreadChats > 99
+                                                  ? "99+"
+                                                  : unreadChats
+                                                  .toString(),
+                                              textAlign:
+                                              TextAlign.center,
+                                              style:
+                                              GoogleFonts.poppins(
+                                                color: Colors.white,
+                                                fontSize: 8,
+                                                fontWeight:
+                                                FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+
+                                // =================================
+                                // POST VISIBILITY SWITCH
+                                // =================================
+
+                                if (_hasPosts) ...[
+                                  const SizedBox(width: 4),
+
+                                  SizedBox(
+                                    width: 48,
+                                    height: 44,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Switch(
+                                        value: !_hideMyPosts,
+                                        activeColor:
+                                        Colors.greenAccent,
+                                        activeTrackColor:
+                                        Colors.white24,
+                                        inactiveThumbColor:
+                                        Colors.grey.shade400,
+                                        inactiveTrackColor:
+                                        Colors.white24,
+                                        onChanged: (value) async {
+                                          final user =
+                                              _auth.currentUser;
+
+                                          if (user == null) {
+                                            return;
+                                          }
+
+                                          final hidePosts = !value;
+
+                                          setState(() {
+                                            _hideMyPosts =
+                                                hidePosts;
+                                          });
+
+                                          await _firestore
+                                              .collection('users')
+                                              .doc(user.uid)
+                                              .set(
+                                            {
+                                              'hidePosts':
+                                              hidePosts,
+                                            },
+                                            SetOptions(
+                                              merge: true,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        )
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+
+                    // =================================================
+                    // SEARCH BAR
+                    // =================================================
+                    //
+                    // IMPORTANT:
+                    // top = 0
+                    //
+                    // There is NO static SizedBox between header/search.
+                    // =================================================
+
                     Container(
-                      margin: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+                      margin: const EdgeInsets.fromLTRB(
+                        16,
+                        0,
+                        16,
+                        6,
+                      ),
                       height: 44,
+
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
@@ -1719,6 +1764,7 @@
                           ),
                         ],
                       ),
+
                       child: Row(
                         children: [
 
@@ -1735,17 +1781,21 @@
                           Expanded(
                             child: TextField(
                               controller: _searchController,
+
                               onChanged: (value) {
                                 setState(() {});
                                 _filterPosts();
                               },
+
                               style: GoogleFonts.poppins(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
+
                               decoration: InputDecoration(
                                 border: InputBorder.none,
-                                hintText: "Search food, chef or cuisine",
+                                hintText:
+                                "Search food, chef or cuisine",
                                 hintStyle: GoogleFonts.poppins(
                                   color: Colors.grey.shade500,
                                   fontSize: 12,
@@ -1756,39 +1806,51 @@
 
                           if (_searchController.text.isNotEmpty)
                             IconButton(
-                              icon: const Icon(Icons.close_rounded),
+                              icon: const Icon(
+                                Icons.close_rounded,
+                              ),
                               onPressed: () {
                                 _searchController.clear();
                                 _filterPosts();
                               },
                             ),
-
                         ],
                       ),
                     ),
 
-                    // Category Slider
-                    // Category Slider
+                    // =================================================
+                    // CATEGORY SLIDER
+                    // =================================================
+
                     SizedBox(
                       height: 52,
+
                       child: Row(
                         children: [
 
-                          // Fixed All Button
+                          // ===========================================
+                          // FIXED ALL BUTTON
+                          // ===========================================
+
                           Padding(
-                            padding: const EdgeInsets.only(left: 12),
+                            padding:
+                            const EdgeInsets.only(left: 12),
                             child: _categoryItem(
                               "All",
                               "assets/categories/all.png",
                             ),
                           ),
 
+                          // ===========================================
+                          // SCROLLABLE CATEGORIES
+                          // ===========================================
 
-                          // Scrollable Categories
                           Expanded(
                             child: ListView(
                               scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.only(left: 5),
+                              padding:
+                              const EdgeInsets.only(left: 5),
+
                               children: [
 
                                 _categoryItem(
@@ -1830,28 +1892,39 @@
                                   "Tiffin",
                                   "assets/categories/tiffin.png",
                                 ),
-
                               ],
                             ),
                           ),
                         ],
                       ),
                     ),
+
                     const SizedBox(height: 4),
 
+                    // =================================================
+                    // PROVIDER SELECTOR
+                    // =================================================
+
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 16),
+
                       child: Container(
                         height: 34,
                         padding: const EdgeInsets.all(3),
+
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
+
                         child: Row(
                           children: [
 
-                            // ================= HOME CHEF =================
+                            // =========================================
+                            // HOME CHEF
+                            // =========================================
+
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
@@ -1861,21 +1934,31 @@
 
                                   _filterPosts();
                                 },
+
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
+                                  duration:
+                                  const Duration(milliseconds: 200),
                                   height: 28,
+
                                   decoration: BoxDecoration(
-                                    color: selectedProvider == 'homeChef'
+                                    color:
+                                    selectedProvider == 'homeChef'
                                         ? const Color(0xFFF94449)
                                         : Colors.white,
-                                    borderRadius: BorderRadius.circular(9),
+                                    borderRadius:
+                                    BorderRadius.circular(9),
                                   ),
+
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.center,
+
                                     children: [
+
                                       const Text(
                                         '👨‍🍳',
-                                        style: TextStyle(fontSize: 13),
+                                        style:
+                                        TextStyle(fontSize: 13),
                                       ),
 
                                       const SizedBox(width: 5),
@@ -1884,8 +1967,10 @@
                                         'Home Chef',
                                         style: GoogleFonts.poppins(
                                           fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: selectedProvider == 'homeChef'
+                                          fontWeight:
+                                          FontWeight.w600,
+                                          color: selectedProvider ==
+                                              'homeChef'
                                               ? Colors.white
                                               : Colors.black87,
                                         ),
@@ -1898,31 +1983,46 @@
 
                             const SizedBox(width: 3),
 
-                            // ================= RESTAURANT =================
+                            // =========================================
+                            // RESTAURANT
+                            // =========================================
+
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    selectedProvider = 'restaurant';
+                                    selectedProvider =
+                                    'restaurant';
                                   });
 
                                   _filterPosts();
                                 },
+
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
+                                  duration:
+                                  const Duration(milliseconds: 200),
                                   height: 28,
+
                                   decoration: BoxDecoration(
-                                    color: selectedProvider == 'restaurant'
+                                    color:
+                                    selectedProvider ==
+                                        'restaurant'
                                         ? const Color(0xFFF94449)
                                         : Colors.white,
-                                    borderRadius: BorderRadius.circular(9),
+                                    borderRadius:
+                                    BorderRadius.circular(9),
                                   ),
+
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.center,
+
                                     children: [
+
                                       const Text(
                                         '🍽️',
-                                        style: TextStyle(fontSize: 13),
+                                        style:
+                                        TextStyle(fontSize: 13),
                                       ),
 
                                       const SizedBox(width: 5),
@@ -1931,8 +2031,10 @@
                                         'Restaurant',
                                         style: GoogleFonts.poppins(
                                           fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: selectedProvider == 'restaurant'
+                                          fontWeight:
+                                          FontWeight.w600,
+                                          color: selectedProvider ==
+                                              'restaurant'
                                               ? Colors.white
                                               : Colors.black87,
                                         ),
@@ -1951,122 +2053,205 @@
                   ],
                 ),
               ),
-              Expanded(
-                child: loadingPosts
-                    ? const Center(child: CircularProgressIndicator())
-                    : filteredPosts.isEmpty
-                    ? Center(
-                  child: Text(
-                    showOnlyMyPosts
-                        ? 'You have not created any posts yet'
-                        : 'No posts nearby',
-                  ),
-                )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.only(bottom: 16),
-                            itemCount: filteredPosts.length,
-                            itemBuilder: (context, index) {
-                              final post = filteredPosts[index];
-                              final myId = _auth.currentUser!.uid;
-                              final isOwnPost = post.creatorId == myId;
-                              final timeText = post.timestamp != null
-                                  ? _formatTime(post.timestamp!.toDate())
-                                  : "Unknown";
-                              final expireText = post.expireAt != null
-                                  ? _formatTime(post.expireAt!.toDate())
-                                  : null;
-                              if (post.providerType == "restaurant") {
-                                return RestaurantCard(
-                                  post: post,
-                                  isOwnPost: isOwnPost,
-                                  searchText: searchedKeyword,
-                                  onOptionsPressed: () {
-                                    _showPostOptions(post);
-                                  },
-                                  onViewPressed: () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (_) => DraggableScrollableSheet(
-                                        initialChildSize: 0.85,
-                                        minChildSize: 0.4,
-                                        maxChildSize: 0.95,
-                                        builder: (context, scrollController) {
-                                          return PostDetailPage(
-                                            postId: post.id,
-                                            scrollController: scrollController,
-                                            searchText: searchedKeyword,
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  },
-                                  onRatingPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ChefReviewsScreen(
-                                          chefId: post.creatorId,
-                                          chefName: post.creatorName,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  onChatPressed: () => _openChatWithChef(post),
-                                  onAdminOptionsPressed: () {
-                                    _showAdminOptions(context, post);
-                                  },
+            ),
 
-                                );
-                              }
+            // =========================================================
+            // POSTS AREA
+            // =========================================================
 
-                              return PostCard(
-                                post: post,
-                                isOwnPost: isOwnPost,
-                                timeText: timeText,
-                                expireText: isOwnPost ? expireText : null,
-                                searchText: searchedKeyword,
-                                onViewPressed: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (_) => DraggableScrollableSheet(
-                                      initialChildSize: 0.85,
-                                      minChildSize: 0.4,
-                                      maxChildSize: 0.95,
-                                      builder: (context, scrollController) {
-                                        return PostDetailPage(
-                                          postId: post.id,
-                                          scrollController: scrollController,
-                                          searchText: searchedKeyword,
-                                        );
-                                      },
-                                    ),
+            Expanded(
+              child: loadingPosts
+                  ? const Center(
+                child: CircularProgressIndicator(),
+              )
+                  : filteredPosts.isEmpty
+                  ? Center(
+                child: Text(
+                  showOnlyMyPosts
+                      ? 'You have not created any posts yet'
+                      : 'No posts nearby',
+                ),
+              )
+                  : ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(
+                  bottom: 16,
+                ),
+                itemCount: filteredPosts.length,
+
+                itemBuilder: (context, index) {
+                  final post =
+                  filteredPosts[index];
+
+                  final myId =
+                      _auth.currentUser!.uid;
+
+                  final isOwnPost =
+                      post.creatorId == myId;
+
+                  final timeText =
+                  post.timestamp != null
+                      ? _formatTime(
+                    post.timestamp!.toDate(),
+                  )
+                      : "Unknown";
+
+                  final expireText =
+                  post.expireAt != null
+                      ? _formatTime(
+                    post.expireAt!.toDate(),
+                  )
+                      : null;
+
+                  // =========================================
+                  // RESTAURANT
+                  // =========================================
+
+                  if (post.providerType ==
+                      "restaurant") {
+                    return RestaurantCard(
+                      post: post,
+                      isOwnPost: isOwnPost,
+                      searchText: searchedKeyword,
+
+                      onOptionsPressed: () {
+                        _showPostOptions(post);
+                      },
+
+                      onViewPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor:
+                          Colors.transparent,
+
+                          builder: (_) =>
+                              DraggableScrollableSheet(
+                                initialChildSize: 0.85,
+                                minChildSize: 0.4,
+                                maxChildSize: 0.95,
+
+                                builder: (
+                                    context,
+                                    scrollController,
+                                    ) {
+                                  return PostDetailPage(
+                                    postId: post.id,
+                                    scrollController:
+                                    scrollController,
+                                    searchText:
+                                    searchedKeyword,
                                   );
                                 },
-                                onChatPressed: () => _openChatWithChef(post),
-                                onOptionsPressed: () => _showPostOptions(post),
-                              );
-                            },
+                              ),
+                        );
+                      },
+
+                      onRatingPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ChefReviewsScreen(
+                                  chefId:
+                                  post.creatorId,
+                                  chefName:
+                                  post.creatorName,
+                                ),
                           ),
+                        );
+                      },
+
+                      onChatPressed: () =>
+                          _openChatWithChef(post),
+
+                      onAdminOptionsPressed: () {
+                        _showAdminOptions(
+                          context,
+                          post,
+                        );
+                      },
+                    );
+                  }
+
+                  // =========================================
+                  // HOME CHEF POST
+                  // =========================================
+
+                  return PostCard(
+                    post: post,
+                    isOwnPost: isOwnPost,
+                    timeText: timeText,
+
+                    // Normal users don't see expire time
+                    expireText:
+                    isOwnPost
+                        ? expireText
+                        : null,
+
+                    searchText: searchedKeyword,
+
+                    onViewPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor:
+                        Colors.transparent,
+
+                        builder: (_) =>
+                            DraggableScrollableSheet(
+                              initialChildSize: 0.85,
+                              minChildSize: 0.4,
+                              maxChildSize: 0.95,
+
+                              builder: (
+                                  context,
+                                  scrollController,
+                                  ) {
+                                return PostDetailPage(
+                                  postId: post.id,
+                                  scrollController:
+                                  scrollController,
+                                  searchText:
+                                  searchedKeyword,
+                                );
+                              },
+                            ),
+                      );
+                    },
+
+                    onChatPressed: () =>
+                        _openChatWithChef(post),
+
+                    onOptionsPressed: () =>
+                        _showPostOptions(post),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+
+        // ===========================================================
+        // BOTTOM NAVIGATION
+        // ===========================================================
+
         bottomNavigationBar: SafeArea(
           top: false,
+
           child: Container(
-            height: 70, // fixed height
+            height: 70,
+
             margin: const EdgeInsets.only(
               left: 12,
               right: 12,
               bottom: 0,
             ),
+
             decoration: BoxDecoration(
               color: const Color(0xFFFFF8E1),
               borderRadius: BorderRadius.circular(30),
+
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.12),
@@ -2075,17 +2260,25 @@
                 ),
               ],
             ),
+
             child: ClipRRect(
               borderRadius: BorderRadius.circular(30),
+
               child: BottomNavigationBar(
                 type: BottomNavigationBarType.fixed,
-                backgroundColor: const Color(0xFFFFF8E1),
-                selectedItemColor: const Color(0xFFF94449),
-                unselectedItemColor: Colors.black54,
+                backgroundColor:
+                const Color(0xFFFFF8E1),
+
+                selectedItemColor:
+                const Color(0xFFF94449),
+
+                unselectedItemColor:
+                Colors.black54,
+
                 elevation: 0,
 
-                // 🔥 Center icons vertically
                 iconSize: 24,
+
                 selectedFontSize: 11,
                 unselectedFontSize: 11,
 
@@ -2094,35 +2287,45 @@
                     icon: Icon(Icons.home),
                     label: 'Home',
                   ),
+
                   BottomNavigationBarItem(
                     icon: Icon(Icons.list),
                     label: 'My Posts',
                   ),
+
                   BottomNavigationBarItem(
                     icon: Icon(Icons.add_box),
                     label: 'Add Post',
                   ),
+
                   BottomNavigationBarItem(
                     icon: Icon(Icons.help),
                     label: 'Help',
                   ),
+
                   BottomNavigationBarItem(
                     icon: Icon(Icons.share),
                     label: 'Share',
                   ),
                 ],
 
-                currentIndex: showOnlyMyPosts ? 1 : 0,
+                currentIndex:
+                showOnlyMyPosts ? 1 : 0,
 
                 onTap: (index) {
                   switch (index) {
+
                     case 0:
-                      setState(() => showOnlyMyPosts = false);
+                      setState(() {
+                        showOnlyMyPosts = false;
+                      });
                       _loadPosts();
                       break;
 
                     case 1:
-                      setState(() => showOnlyMyPosts = true);
+                      setState(() {
+                        showOnlyMyPosts = true;
+                      });
                       _loadPosts();
                       break;
 
@@ -2133,7 +2336,8 @@
                     case 3:
                       showDialog(
                         context: context,
-                        builder: (_) => const HelpSupportPage(),
+                        builder: (_) =>
+                        const HelpSupportPage(),
                       );
                       break;
 
