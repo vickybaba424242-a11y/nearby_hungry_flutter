@@ -1450,13 +1450,12 @@
             child: _showAppBar
                 ? SafeArea(
               bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: SizedBox(
-                  height: 56,
+              child: SizedBox(
+                height: 56,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(
                     children: [
-
                       // ================= MENU =================
                       Builder(
                         builder: (context) => SizedBox(
@@ -1484,7 +1483,6 @@
                       Expanded(
                         child: Row(
                           children: [
-
                             Icon(
                               Icons.location_on,
                               color: userLat != null
@@ -1517,8 +1515,7 @@
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-
-                          // ================= MESSAGE =================
+                          // MESSAGE
                           SizedBox(
                             width: 42,
                             height: 42,
@@ -1526,7 +1523,6 @@
                               clipBehavior: Clip.none,
                               alignment: Alignment.center,
                               children: [
-
                                 IconButton(
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(
@@ -1583,7 +1579,7 @@
                             ),
                           ),
 
-                          // ================= VISIBILITY =================
+                          // VISIBILITY
                           if (_hasPosts) ...[
                             const SizedBox(width: 2),
 
@@ -1596,7 +1592,6 @@
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-
                                     Icon(
                                       _hideMyPosts
                                           ? Icons.visibility_off_outlined
@@ -1611,18 +1606,13 @@
                                       scale: 0.60,
                                       child: Switch(
                                         value: !_hideMyPosts,
-
                                         activeColor:
                                         const Color(0xFFF94449),
                                         activeTrackColor: Colors.white,
-
                                         inactiveThumbColor: Colors.black,
-                                        inactiveTrackColor:
-                                        Colors.black26,
-
+                                        inactiveTrackColor: Colors.black26,
                                         onChanged: (isActive) async {
-                                          final user =
-                                              _auth.currentUser;
+                                          final user = _auth.currentUser;
 
                                           if (user == null) return;
 
@@ -1649,9 +1639,7 @@
                                                 .showSnackBar(
                                               SnackBar(
                                                 duration:
-                                                const Duration(
-                                                  seconds: 2,
-                                                ),
+                                                const Duration(seconds: 2),
                                                 content: Text(
                                                   isActive
                                                       ? "Your posts are now active"
@@ -1711,7 +1699,7 @@
                 child: Column(
                   children: [
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
 
                     // Search Bar
                     Container(
