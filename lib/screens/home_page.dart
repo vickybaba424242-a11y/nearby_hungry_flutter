@@ -1605,12 +1605,18 @@
                                               ),
                                             );
                                           },
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons
-                                                  .arrow_forward_rounded,
-                                              color: Colors.white,
-                                              size: 27,
+                                          child: Center(
+                                            child: ColorFiltered(
+                                              colorFilter: const ColorFilter.mode(
+                                                Colors.white,
+                                                BlendMode.srcIn,
+                                              ),
+                                              child: Image.asset(
+                                                'assets/message.png',
+                                                width: 27,
+                                                height: 27,
+                                                fit: BoxFit.contain,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -1692,8 +1698,7 @@
                                         inactiveTrackColor:
                                         Colors.white24,
                                         onChanged: (value) async {
-                                          final user =
-                                              _auth.currentUser;
+                                          final user = _auth.currentUser;
 
                                           if (user == null) {
                                             return;
@@ -1702,8 +1707,7 @@
                                           final hidePosts = !value;
 
                                           setState(() {
-                                            _hideMyPosts =
-                                                hidePosts;
+                                            _hideMyPosts = hidePosts;
                                           });
 
                                           await _firestore
@@ -1711,11 +1715,26 @@
                                               .doc(user.uid)
                                               .set(
                                             {
-                                              'hidePosts':
-                                              hidePosts,
+                                              'hidePosts': hidePosts,
                                             },
                                             SetOptions(
                                               merge: true,
+                                            ),
+                                          );
+
+                                          if (!mounted) return;
+
+                                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                value
+                                                    ? 'Your posts are now active.'
+                                                    : 'Your posts are now inactive.',
+                                              ),
+                                              backgroundColor: value ? Colors.green : Colors.orange,
+                                              duration: const Duration(seconds: 2),
                                             ),
                                           );
                                         },
@@ -1782,6 +1801,8 @@
                             child: TextField(
                               controller: _searchController,
 
+                              textAlignVertical: TextAlignVertical.center,
+
                               onChanged: (value) {
                                 setState(() {});
                                 _filterPosts();
@@ -1794,11 +1815,15 @@
 
                               decoration: InputDecoration(
                                 border: InputBorder.none,
-                                hintText:
-                                "Search food, chef or cuisine",
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+
+                                hintText: "Search food, chef or cuisine",
+
                                 hintStyle: GoogleFonts.poppins(
                                   color: Colors.grey.shade500,
                                   fontSize: 12,
+                                  fontWeight: FontWeight.w400,
                                 ),
                               ),
                             ),
