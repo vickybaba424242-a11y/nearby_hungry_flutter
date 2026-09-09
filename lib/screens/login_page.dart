@@ -603,7 +603,6 @@ class _LoginPageState extends State<LoginPage> {
 
       if (userCredential != null &&
           userCredential.user != null) {
-
         final user = userCredential.user!;
 
         final userDoc = FirebaseFirestore.instance
@@ -640,18 +639,39 @@ class _LoginPageState extends State<LoginPage> {
           '/home',
               (route) => false,
         );
-
       } else {
         if (mounted) {
           showSnack("Apple Sign-In cancelled");
         }
       }
 
-    } catch (e) {
-      debugPrint("❌ APPLE LOGIN ERROR: $e");
+    } on FirebaseAuthException catch (e) {
+      debugPrint("❌ APPLE FIREBASE ERROR CODE: ${e.code}");
+      debugPrint("❌ APPLE FIREBASE ERROR MESSAGE: ${e.message}");
 
       if (mounted) {
-        showSnack("Apple Sign-In failed");
+        showSnack(
+          "Apple Firebase Error: ${e.code}\n${e.message ?? ''}",
+        );
+      }
+
+    } on SignInWithAppleAuthorizationException catch (e) {
+      debugPrint("❌ APPLE AUTH ERROR CODE: ${e.code}");
+      debugPrint("❌ APPLE AUTH ERROR MESSAGE: ${e.message}");
+
+      if (mounted) {
+        showSnack(
+          "Apple Auth Error: ${e.code}\n${e.message ?? ''}",
+        );
+      }
+
+    } catch (e) {
+      debugPrint("❌ APPLE UNKNOWN ERROR: $e");
+
+      if (mounted) {
+        showSnack(
+          "Apple Error: $e",
+        );
       }
 
     } finally {

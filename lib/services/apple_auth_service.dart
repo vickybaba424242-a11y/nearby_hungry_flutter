@@ -27,7 +27,7 @@ class AppleAuthService {
 
   static Future<UserCredential?> signInWithApple() async {
     try {
-      // Generate a random nonce for this Apple Sign-In request.
+      // Generate a random nonce.
       final rawNonce = _generateNonce();
 
       // Hash the nonce before sending it to Apple.
@@ -50,8 +50,7 @@ class AppleAuthService {
         );
       }
 
-      // Create Firebase Apple credential using the identity token
-      // and the ORIGINAL raw nonce.
+      // Use the ORIGINAL raw nonce with Firebase.
       final oauthCredential =
       OAuthProvider('apple.com').credential(
         idToken: identityToken,
