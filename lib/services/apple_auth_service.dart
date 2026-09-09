@@ -51,9 +51,11 @@ class AppleAuthService {
       }
 
       // Use the ORIGINAL raw nonce with Firebase.
-      final oauthCredential = AppleAuthProvider().credential(
+      final oauthCredential =
+      OAuthProvider('apple.com').credential(
         idToken: identityToken,
         rawNonce: rawNonce,
+        accessToken: appleCredential.authorizationCode,
       );
 
       final userCredential =
